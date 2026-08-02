@@ -23,9 +23,13 @@ describe('course schema', () => {
 
   it('accepts a fully attributed local GLB candidate with load budgets', () => {
     expect(modelAssetSchema.safeParse(riggedFigureQaAsset).success).toBe(true);
+    expect(riggedFigureQaAsset.kind).toBe('glb');
+    if (riggedFigureQaAsset.kind !== 'glb') throw new Error('QA asset must be GLB');
+
     expect(riggedFigureQaAsset.status).toBe('technical-review');
     expect(riggedFigureQaAsset.allowRemote).toBe(false);
     expect(riggedFigureQaAsset.maxBytes).toBeLessThanOrEqual(8 * 1024 * 1024);
+    expect(riggedFigureQaAsset.sha256).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it('rejects GLB entries without source, license and transform metadata', () => {
