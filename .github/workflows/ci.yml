@@ -39,7 +39,10 @@ jobs:
       - run: npm run test:e2e
 
   generate-mpfb-candidate:
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 1
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'agent/phase-1-3d-poc' &&
+      github.event.pull_request.head.ref == 'agent/mpfb-run-1'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -49,10 +52,8 @@ jobs:
       OUTPUT_DIR: ${{ runner.temp }}/mpfb-candidate
     steps:
       - uses: actions/checkout@v6
-
       - name: Generate reproducible technical-review candidate
         run: bash tools/blender/run_candidate_pipeline.sh
-
       - name: Upload candidate or failure logs
         if: always()
         uses: actions/upload-artifact@v4
