@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const viewPresetSchema = z.enum(['front', 'back', 'left', 'right', 'top', 'detail']);
 const vector3Schema = z.tuple([z.number(), z.number(), z.number()]);
+const anchorBoneSchema = z.string().min(1).optional();
 
 export const cameraPresetSchema = z.object({
   id: viewPresetSchema,
@@ -15,6 +16,7 @@ export const ropeSegmentSchema = z.object({
   role: z.enum(['completed', 'current', 'tail']),
   points: z.array(vector3Schema).min(2),
   radius: z.number().positive(),
+  anchorBone: anchorBoneSchema,
 });
 
 export const safetyCheckSchema = z.object({
@@ -31,6 +33,7 @@ export const contactPointSchema = z.object({
   kind: z.enum(['contact', 'check', 'risk']),
   position: vector3Schema,
   note: z.string().min(1),
+  anchorBone: anchorBoneSchema,
 });
 
 export const handCueSchema = z.object({
@@ -38,12 +41,14 @@ export const handCueSchema = z.object({
   label: z.string().min(1),
   position: vector3Schema,
   target: vector3Schema,
+  anchorBone: anchorBoneSchema,
 });
 
 export const directionCueSchema = z.object({
   label: z.string().min(1),
   from: vector3Schema,
   to: vector3Schema,
+  anchorBone: anchorBoneSchema,
 });
 
 export const errorStateSchema = z.object({
@@ -95,6 +100,7 @@ const modelAssetBaseSchema = z.object({
   status: z.enum(['placeholder', 'technical-review', 'approved']),
   adultPresentation: z.literal(true).default(true),
   presentation: z.literal('neutral-fully-clothed').default('neutral-fully-clothed'),
+  boneMap: z.record(z.string(), z.string().min(1)).default({}),
 });
 
 export const modelTransformSchema = z.object({
@@ -174,6 +180,25 @@ export const courseSchema = courseObjectSchema.superRefine((course, context) => 
       message: 'modelId must match modelAsset.id',
     });
   }
+
+  const availableSemanticBones = new Set(Object.keys(course.modelAsset.boneMap));
+  const anchors = course.steps.flatMap((step) => [
+    ...step.ropeSegments.map((segment) => segment.anchorBone),
+    ...step.contactPoints.map((marker) => marker.anchorBone),
+    step.handCue?.anchorBone,
+    step.directionCue?.anchorBone,
+    ...step.errorStates.flatMap((error) => error.ropeSegments.map((segment) => segment.anchorBone)),
+  ]).filter((anchor): anchor is string => Boolean(anchor));
+
+  anchors.forEach((anchor) => {
+    if (!availableSemanticBones.has(anchor)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['modelAsset', 'boneMap'],
+        message: `Teaching anchor ${anchor} is missing from modelAsset.boneMap`,
+      });
+    }
+  });
 
   if (course.reviewStatus !== 'approved') return;
 
