@@ -4,6 +4,7 @@ import { Box3, Vector3 } from 'three';
 import type { BufferGeometry, Material, Mesh, Object3D, SkinnedMesh } from 'three';
 import { SkeletonUtils } from 'three-stdlib';
 import type { ModelAsset } from '../../schemas/course';
+import { useTeachingModel } from './TeachingModelContext';
 
 export type GlbAsset = Extract<ModelAsset, { kind: 'glb' }>;
 type RenderMesh = Mesh<BufferGeometry, Material | Material[]>;
@@ -81,6 +82,7 @@ function inspectModel(scene: Object3D): Diagnostics {
 
 function LoadedGlb({ asset, opacity, blobUrl, byteLength }: GlbAssetModelProps & { blobUrl: string; byteLength: number }) {
   const gltf = useGLTF(blobUrl);
+  const { registerModel } = useTeachingModel();
   const prepared = useMemo(() => {
     const scene = SkeletonUtils.clone(gltf.scene);
     const materials = new Set<Material>();
@@ -113,6 +115,11 @@ function LoadedGlb({ asset, opacity, blobUrl, byteLength }: GlbAssetModelProps &
   }, [asset.transform.position, asset.transform.rotation, asset.transform.scale, gltf.scene, opacity]);
 
   const { actions } = useAnimations(gltf.animations, prepared.scene);
+
+  useEffect(
+    () => registerModel(prepared.scene, asset.boneMap),
+    [asset.boneMap, prepared.scene, registerModel],
+  );
 
   useEffect(() => {
     if (!asset.animationClip) return undefined;
@@ -168,6 +175,7 @@ export default function GlbAssetModel({ asset, opacity }: GlbAssetModelProps) {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort('timeout'), asset.timeoutMs);
     let objectUrl: string | null = null;
+    let active = true;
 
     const load = async () => {
       try {
@@ -193,10 +201,12 @@ export default function GlbAssetModel({ asset, opacity }: GlbAssetModelProps) {
           }
         }
 
+        if (!active) return;
         objectUrl = URL.createObjectURL(new Blob([buffer], { type: 'model/gltf-binary' }));
         setByteLength(buffer.byteLength);
         setBlobUrl(objectUrl);
       } catch (error) {
+        if (!active) return;
         if (controller.signal.aborted) {
           setLoadError(new Error(`模型加载超过 ${Math.round(asset.timeoutMs / 1000)} 秒，已中止。`));
           return;
@@ -210,6 +220,7 @@ export default function GlbAssetModel({ asset, opacity }: GlbAssetModelProps) {
     void load();
 
     return () => {
+      active = false;
       controller.abort('unmount');
       window.clearTimeout(timer);
       if (objectUrl) URL.revokeObjectURL(objectUrl);
