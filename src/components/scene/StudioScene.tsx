@@ -1,6 +1,6 @@
 import { AdaptiveDpr, ContactShadows, Html, PerformanceMonitor } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import type { CourseStep, Course } from '../../schemas/course';
 import type { SceneSettings } from '../../types/scene';
 import { CameraRig } from './CameraRig';
@@ -21,15 +21,11 @@ function qualityDpr(quality: SceneSettings['quality']) {
 }
 
 export function StudioScene({ course, step, progress, settings, onQualityFallback }: StudioSceneProps) {
-  const [dpr, setDpr] = useState(() => qualityDpr(settings.quality));
-
-  useEffect(() => setDpr(qualityDpr(settings.quality)), [settings.quality]);
-
   return (
     <Canvas
       className="studio-canvas"
       shadows={settings.quality !== 'low'}
-      dpr={dpr}
+      dpr={qualityDpr(settings.quality)}
       camera={{ position: [0, 1.55, 4.3], fov: 38, near: 0.1, far: 100 }}
       gl={{ antialias: settings.quality !== 'low', powerPreference: 'high-performance' }}
     >
@@ -60,12 +56,7 @@ export function StudioScene({ course, step, progress, settings, onQualityFallbac
       </Suspense>
       <CameraRig course={course} preset={settings.viewPreset} locked={settings.cameraLocked} mirrored={settings.mirrored} />
       <AdaptiveDpr pixelated />
-      <PerformanceMonitor
-        onDecline={() => {
-          setDpr(1);
-          onQualityFallback();
-        }}
-      />
+      <PerformanceMonitor onDecline={onQualityFallback} />
     </Canvas>
   );
 }
