@@ -25,10 +25,12 @@ describe('App', () => {
     expect(screen.getByRole('img', { name: /简化二维绳路图/ })).toBeInTheDocument();
   });
 
-  it('exposes model provenance and a clearly labelled QA asset switch', () => {
+  it('exposes provenance, release gates and a clearly labelled QA asset switch', () => {
     render(<App />);
     expect(screen.getByRole('heading', { name: /看得见资产状态/ })).toBeInTheDocument();
     expect(screen.getByText(/尚无独立审核记录/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '0/6 项通过' })).toBeInTheDocument();
+    expect(screen.getByText(/门禁由课程与审核数据实时计算/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /加载技术 QA 模型/ }));
     expect(screen.getByText('Khronos RiggedFigure · 技术 QA')).toBeInTheDocument();
