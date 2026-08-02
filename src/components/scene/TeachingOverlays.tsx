@@ -26,7 +26,7 @@ function MissingBone({ name }: { name: string }) {
   );
 }
 
-function anchoredFallback(name?: string) {
+function anchoredFallback(name: string | undefined) {
   return name ? <MissingBone name={name} /> : null;
 }
 
@@ -35,7 +35,7 @@ function DirectionArrow({ from, to, mirrored, label, anchorBone }: {
   to: readonly [number, number, number];
   mirrored: boolean;
   label: string;
-  anchorBone?: string;
+  anchorBone: string | undefined;
 }) {
   const start = point(from, mirrored, Boolean(anchorBone));
   const end = point(to, mirrored, Boolean(anchorBone));
