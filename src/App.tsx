@@ -1,20 +1,24 @@
 import { BookOpenCheck, Check, CircleAlert, Clock3, Heart, Layers3, Menu, RotateCcw, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { AssetTransparencyPanel } from './components/ui/AssetTransparencyPanel';
 import { CourseLibrary } from './components/ui/CourseLibrary';
+import { Glossary } from './components/ui/Glossary';
 import { PlayerControls } from './components/ui/PlayerControls';
 import { SceneBoundary } from './components/ui/SceneBoundary';
 import { SceneToolbar } from './components/ui/SceneToolbar';
 import { StepDiagram } from './components/ui/StepDiagram';
 import { StepPanel } from './components/ui/StepPanel';
 import { demoCourse } from './data/demoCourse';
+import { qaModelAsset } from './data/qaModelAsset';
 import { useLearningProgress } from './hooks/useLearningProgress';
 import { usePlayback } from './hooks/usePlayback';
 import type { SceneSettings } from './types/scene';
 import './scene-launch.css';
 import './consent-modal.css';
 
+const loadStudioScene = () => import('./components/scene/StudioScene');
 const StudioScene = lazy(() =>
-  import('./components/scene/StudioScene').then((module) => ({ default: module.StudioScene })),
+  loadStudioScene().then((module) => ({ default: module.StudioScene })),
 );
 
 const initialSettings: SceneSettings = {
@@ -43,7 +47,9 @@ export function App() {
   const [acknowledged, setAcknowledged] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [studioActivated, setStudioActivated] = useState(false);
+  const [usingQaAsset, setUsingQaAsset] = useState(false);
   const step = course.steps[playback.stepIndex] ?? course.steps[0];
+  const activeModelAsset = usingQaAsset ? qaModelAsset : course.modelAsset;
 
   if (!step) throw new Error('Course has no steps');
 
@@ -52,8 +58,8 @@ export function App() {
     [course.steps.length, playback.progress, playback.stepIndex],
   );
   const masteryCompletion = Math.round((learning.completedStepIds.length / course.steps.length) * 100);
-  const modelAssetLabel = course.modelAsset.kind === 'glb'
-    ? `GLB · ${course.modelAsset.status}`
+  const modelAssetLabel = activeModelAsset.kind === 'glb'
+    ? `GLB · ${activeModelAsset.status}`
     : '程序化占位模型 · 待审核';
 
   useEffect(() => {
@@ -64,7 +70,12 @@ export function App() {
     ? { ...settings, viewPreset: step.recommendedView }
     : settings;
 
+  const preloadStudio = () => {
+    void loadStudioScene();
+  };
+
   const activateStudio = () => {
+    preloadStudio();
     setStudioActivated(true);
     setMenuOpen(false);
   };
@@ -78,6 +89,17 @@ export function App() {
     learning.reset();
     playback.goToStep(0);
     setAcknowledged(false);
+    setUsingQaAsset(false);
+  };
+
+  const toggleQaAsset = () => {
+    setUsingQaAsset((current) => {
+      const next = !current;
+      setNotice(next
+        ? '已选择技术 QA 模型；它只验证 GLB 管线，不代表正式课程人物。'
+        : '已返回课程程序化占位模型。');
+      return next;
+    });
   };
 
   const diagram = (
@@ -97,10 +119,12 @@ export function App() {
           <span><strong>Shibari Studio</strong><small>3D Safety-first Learning</small></span>
         </a>
         <nav className={menuOpen ? 'nav is-open' : 'nav'}>
-          <a href="#library">课程库</a><a href="#course" onClick={activateStudio}>练习室</a><a href="#path">学习路径</a><a href="#safety">安全入门</a><a href="#research">研究与审核</a>
+          <a href="#library">课程库</a>
+          <a href="#course" onMouseEnter={preloadStudio} onFocus={preloadStudio} onClick={activateStudio}>练习室</a>
+          <a href="#path">学习路径</a><a href="#safety">安全入门</a><a href="#glossary">术语表</a><a href="#research">研究与审核</a>
         </nav>
         <button className="menu-button" onClick={() => setMenuOpen((value) => !value)} aria-label="切换菜单">{menuOpen ? <X /> : <Menu />}</button>
-        <div className="status-chip"><span />第三阶段 PoC · 未经课程审核</div>
+        <div className="status-chip"><span />第四阶段 PoC · 未经课程审核</div>
       </header>
 
       <main id="top">
@@ -108,9 +132,12 @@ export function App() {
           <div className="hero__copy">
             <span className="kicker"><Sparkles size={16} />可旋转人物 · 分步绳路 · 步骤安全提示</span>
             <h1>把每一段绳路，<br /><em>看清楚再练习。</em></h1>
-            <p>面向成年学习者的 3D 互动教学原型。现在已经加入 GLB 资产契约、安全回退、操作手、绳头方向、接触点、错误对比和学习记录；仍不替代线下专业指导。</p>
-            <div className="hero__actions"><a className="primary-button" href="#course" onClick={activateStudio}>进入 3D 练习室</a><a className="secondary-button" href="#library">浏览课程库</a></div>
-            <div className="hero__metrics"><span><strong>360°</strong>自由视角</span><span><strong>{course.steps.length}</strong>独立步骤</span><span><strong>GLB/2D</strong>安全回退</span></div>
+            <p>面向成年学习者的 3D 互动教学原型。现在加入受控 GLB 下载、体积和哈希校验、加载超时、模型诊断、资产来源与审核透明度；仍不替代线下专业指导。</p>
+            <div className="hero__actions">
+              <a className="primary-button" href="#course" onMouseEnter={preloadStudio} onFocus={preloadStudio} onClick={activateStudio}>进入 3D 练习室</a>
+              <a className="secondary-button" href="#library">浏览课程库</a>
+            </div>
+            <div className="hero__metrics"><span><strong>360°</strong>自由视角</span><span><strong>{course.steps.length}</strong>独立步骤</span><span><strong>GLB/2D</strong>双重回退</span></div>
           </div>
           <div className="hero__visual" aria-hidden="true">
             <div className="orb orb--one" /><div className="orb orb--two" />
@@ -167,6 +194,7 @@ export function App() {
                     <Suspense fallback={<div className="scene-launch scene-launch--loading"><span>正在按需加载 3D 引擎…</span></div>}>
                       <StudioScene
                         course={course}
+                        modelAsset={activeModelAsset}
                         step={step}
                         progress={playback.progress}
                         settings={sceneSettings}
@@ -184,10 +212,10 @@ export function App() {
                     <span>确认后才会加载 Three.js 和 3D 教学场景。</span>
                   </div>
                 ) : (
-                  <button className="scene-launch" onClick={activateStudio}>
+                  <button className="scene-launch" onMouseEnter={preloadStudio} onFocus={preloadStudio} onClick={activateStudio}>
                     <Layers3 size={34} />
                     <strong>加载 3D 练习室</strong>
-                    <span>首页不会预加载 Three.js；点击后再下载交互引擎。</span>
+                    <span>悬停时预取代码，点击并确认后才初始化 WebGL。</span>
                   </button>
                 )}
                 {notice && <button className="performance-notice" onClick={() => setNotice(null)}>{notice}<X size={14} /></button>}
@@ -229,6 +257,13 @@ export function App() {
           </div>
         </section>
 
+        <AssetTransparencyPanel
+          course={course}
+          activeAsset={activeModelAsset}
+          usingQaAsset={usingQaAsset}
+          onToggleQaAsset={toggleQaAsset}
+        />
+
         <section id="path" className="content-section">
           <div className="section-heading"><div><span className="eyebrow">渐进式学习路径</span><h2>先建立安全能力，再增加技法复杂度</h2></div></div>
           <div className="path-grid">
@@ -243,17 +278,19 @@ export function App() {
           <div className="safety-grid"><article><strong>立即停止</strong><span>麻木、刺痛、灼痛、电击感、运动无力。</span></article><article><strong>循环复查</strong><span>颜色、温度、感觉、主动运动与对称性。</span></article><article><strong>快速解除</strong><span>活动绳头不可立即识别时，使用安全剪。</span></article></div>
         </section>
 
+        <Glossary />
+
         <section id="research" className="content-section research-section">
-          <div className="section-heading"><div><span className="eyebrow">研究与资产状态</span><h2>不伪装 img2threejs 的能力边界</h2></div></div>
+          <div className="section-heading"><div><span className="eyebrow">研究与资产状态</span><h2>不伪装任何模型或课程的完成度</h2></div></div>
           <div className="research-grid">
-            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查 Schema</li><li>GLB 资产契约、骨骼安全克隆和模型级失败回退</li><li>操作手、绳头方向、接触点与错误对比</li><li>学习记录、收藏、课程搜索筛选</li><li>锁定依赖、3D 按需加载和 2D 降级模式</li></ul></article>
-            <article><h3>仍需人工完成</h3><ul><li>Image 2 多视图统一人物参考图</li><li>高质量拓扑、骨骼绑定与权重</li><li>专业绳师逐步校验绳路</li><li>医学/人体结构安全审核</li><li>GLB 压缩、LOD、纹理压缩和真机性能测试</li></ul></article>
-            <article className="warning-card"><h3>img2threejs 1.4.3 评估</h3><p>当前工具主要从单张参考图生成程序化 TypeScript/Three.js 模型。人物重建、绑定就绪拓扑、自动权重、自动绑定和多视图重建仍分布在后续路线图中，因此不能宣称已经产出可直接用于生产的写实带骨骼人物 GLB。</p></article>
+            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查与审核记录 Schema</li><li>GLB 受控下载、超时、体积和 SHA-256 校验</li><li>骨骼安全克隆、模型诊断与模型级失败回退</li><li>资产来源、许可和审核状态展示</li><li>学习记录、锁定依赖、代码预取和 2D 降级</li></ul></article>
+            <article><h3>生产发布阻塞项</h3><ul><li>最终写实成年女性着装模型</li><li>课程姿势、骨骼权重和人体 landmark 验收</li><li>专业绳师逐步校验绳路</li><li>医学/人体结构安全审核</li><li>GLB 压缩、LOD、纹理压缩和真机性能测试</li></ul></article>
+            <article className="warning-card"><h3>生成工具边界</h3><p>img2threejs 仍不能替代生产级人物重建、拓扑、绑定和权重流程。项目会尝试基于 CC0 MakeHuman/MPFB 资产建立可复现人物管线，但只有通过来源、着装、骨骼、姿势、绳路和性能验收后才会替换默认占位模型。</p></article>
           </div>
         </section>
       </main>
 
-      <footer><span>Shibari Studio Phase 3 PoC</span><span>成年人 · 安全优先 · 未审核课程不得发布</span></footer>
+      <footer><span>Shibari Studio Phase 4 PoC</span><span>成年人 · 安全优先 · 未审核课程不得发布</span></footer>
     </div>
   );
 }
