@@ -35,6 +35,7 @@ const initialSettings: SceneSettings = {
 export function App() {
   const course = demoCourse;
   const learning = useLearningProgress(course.id);
+  const { setLastStepIndex } = learning;
   const playback = usePlayback(course.steps.length, learning.lastStepIndex);
   const [settings, setSettings] = useState(initialSettings);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -52,12 +53,12 @@ export function App() {
   const masteryCompletion = Math.round((learning.completedStepIds.length / course.steps.length) * 100);
 
   useEffect(() => {
-    learning.setLastStepIndex(playback.stepIndex);
-    if (!settings.autoFollow) return;
-    setSettings((current) => current.viewPreset === step.recommendedView
-      ? current
-      : { ...current, viewPreset: step.recommendedView });
-  }, [learning.setLastStepIndex, playback.stepIndex, settings.autoFollow, step.recommendedView]);
+    setLastStepIndex(playback.stepIndex);
+  }, [playback.stepIndex, setLastStepIndex]);
+
+  const sceneSettings: SceneSettings = settings.autoFollow
+    ? { ...settings, viewPreset: step.recommendedView }
+    : settings;
 
   const activateStudio = () => {
     setStudioActivated(true);
@@ -162,7 +163,7 @@ export function App() {
                         course={course}
                         step={step}
                         progress={playback.progress}
-                        settings={settings}
+                        settings={sceneSettings}
                         onQualityFallback={() => {
                           setSettings((current) => ({ ...current, quality: 'low' }));
                           setNotice('检测到性能下降，已切换到低性能模式。');
@@ -179,7 +180,7 @@ export function App() {
                 )}
                 {notice && <button className="performance-notice" onClick={() => setNotice(null)}>{notice}<X size={14} /></button>}
               </div>
-              <SceneToolbar settings={settings} onChange={setSettings} />
+              <SceneToolbar settings={sceneSettings} onChange={setSettings} />
               <PlayerControls
                 stepIndex={playback.stepIndex}
                 stepCount={course.steps.length}
