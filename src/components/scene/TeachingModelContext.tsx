@@ -1,15 +1,7 @@
 import { createPortal } from '@react-three/fiber';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import type { Object3D } from 'three';
-
-interface TeachingModelRegistry {
-  revision: number;
-  root: Object3D | null;
-  bones: ReadonlyMap<string, Object3D>;
-  registerModel: (root: Object3D, boneMap?: Readonly<Record<string, string>>) => () => void;
-}
-
-const TeachingModelContext = createContext<TeachingModelRegistry | null>(null);
+import { TeachingModelRegistryContext, useTeachingModel } from './teachingModelRegistry';
 
 export function TeachingModelProvider({ children }: { children: ReactNode }) {
   const [root, setRoot] = useState<Object3D | null>(null);
@@ -44,13 +36,7 @@ export function TeachingModelProvider({ children }: { children: ReactNode }) {
     [bones, registerModel, revision, root],
   );
 
-  return <TeachingModelContext.Provider value={value}>{children}</TeachingModelContext.Provider>;
-}
-
-export function useTeachingModel() {
-  const context = useContext(TeachingModelContext);
-  if (!context) throw new Error('Teaching model components must be inside TeachingModelProvider');
-  return context;
+  return <TeachingModelRegistryContext.Provider value={value}>{children}</TeachingModelRegistryContext.Provider>;
 }
 
 export function BoneAnchor({ name, children, fallback }: {
