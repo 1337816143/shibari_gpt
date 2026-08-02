@@ -1,0 +1,47 @@
+.glossary .section-heading {
+  align-items: center;
+}
+
+.glossary .section-heading > svg {
+  color: #9ccbc0;
+}
+
+.glossary__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.glossary details {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 0.85rem;
+  background: rgba(20, 27, 28, 0.7);
+}
+
+.glossary summary {
+  cursor: pointer;
+  padding: 0.9rem 1rem;
+  color: #e7efed;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.glossary details[open] summary {
+  color: #b9ded4;
+}
+
+.glossary p {
+  margin: 0;
+  padding: 0 1rem 1rem;
+  color: #9fb0ab;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+  .glossary__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .glossary__grid { grid-template-columns: 1fr; }
+}
