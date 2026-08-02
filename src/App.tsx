@@ -9,7 +9,7 @@ import { SceneToolbar } from './components/ui/SceneToolbar';
 import { StepDiagram } from './components/ui/StepDiagram';
 import { StepPanel } from './components/ui/StepPanel';
 import { demoCourse } from './data/demoCourse';
-import { qaModelAsset } from './data/qaModelAsset';
+import { riggedFigureQaAsset } from './data/modelAssets';
 import { useLearningProgress } from './hooks/useLearningProgress';
 import { usePlayback } from './hooks/usePlayback';
 import type { SceneSettings } from './types/scene';
@@ -49,7 +49,7 @@ export function App() {
   const [studioActivated, setStudioActivated] = useState(false);
   const [usingQaAsset, setUsingQaAsset] = useState(false);
   const step = course.steps[playback.stepIndex] ?? course.steps[0];
-  const activeModelAsset = usingQaAsset ? qaModelAsset : course.modelAsset;
+  const activeModelAsset = usingQaAsset ? riggedFigureQaAsset : course.modelAsset;
 
   if (!step) throw new Error('Course has no steps');
 
