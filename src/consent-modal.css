@@ -1,0 +1,22 @@
+.consent-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5, 8, 9, .78);
+  backdrop-filter: blur(10px);
+}
+
+.consent-modal .consent-banner {
+  width: min(720px, 100%);
+  max-width: none;
+  margin: 0;
+  background: #171e20;
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .55);
+}
+
+.scene-launch--consent {
+  cursor: default;
+}
