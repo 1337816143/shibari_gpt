@@ -1,10 +1,10 @@
-import { GroupProps } from '@react-three/fiber';
+import type { ThreeElements } from '@react-three/fiber';
 import { memo } from 'react';
 import * as THREE from 'three';
 
-interface TrainingMannequinProps extends GroupProps {
+type TrainingMannequinProps = ThreeElements['group'] & {
   opacity: number;
-}
+};
 
 const skin = new THREE.MeshStandardMaterial({ color: '#c99b83', roughness: 0.76 });
 const suit = new THREE.MeshStandardMaterial({ color: '#27353a', roughness: 0.64 });
