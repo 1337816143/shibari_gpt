@@ -1,0 +1,24 @@
+.model-asset-fallback {
+  display: grid;
+  gap: 0.25rem;
+  width: min(18rem, 74vw);
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(226, 188, 111, 0.42);
+  border-radius: 0.75rem;
+  background: rgba(12, 17, 18, 0.92);
+  color: #edf3f1;
+  box-shadow: 0 0.8rem 2.5rem rgba(0, 0, 0, 0.35);
+  text-align: center;
+  pointer-events: none;
+}
+
+.model-asset-fallback strong {
+  color: #e2bc6f;
+  font-size: 0.82rem;
+}
+
+.model-asset-fallback span {
+  color: #b8c4c1;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
