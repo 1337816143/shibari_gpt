@@ -22,3 +22,19 @@ test('supports course filtering and the simplified diagram mode', async ({ page 
   await page.getByRole('button', { name: '简化图' }).click();
   await expect(page.getByRole('img', { name: /简化二维绳路图/ })).toBeVisible();
 });
+
+test('loads the committed GLB only after integrity verification', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: /加载技术 QA 模型/ }).click();
+  await expect(page.getByText('Khronos RiggedFigure · 技术 QA')).toBeVisible();
+
+  await page.getByRole('link', { name: '进入 3D 练习室' }).click();
+  await page.getByRole('button', { name: '我已了解' }).click();
+
+  const diagnostics = page.locator('.model-diagnostics');
+  await expect(diagnostics).toBeVisible({ timeout: 30_000 });
+  await diagnostics.locator('summary').click();
+  await expect(diagnostics.getByText('蒙皮网格')).toBeVisible();
+  await expect(diagnostics.getByText('骨骼')).toBeVisible();
+  await expect(page.getByText(/已使用安全占位模型/)).toHaveCount(0);
+});
