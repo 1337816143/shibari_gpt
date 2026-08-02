@@ -4,7 +4,7 @@ import { Box3, Vector3 } from 'three';
 import type { BufferGeometry, Material, Mesh, Object3D, SkinnedMesh } from 'three';
 import { SkeletonUtils } from 'three-stdlib';
 import type { ModelAsset } from '../../schemas/course';
-import { useTeachingModel } from './TeachingModelContext';
+import { useTeachingModel } from './teachingModelRegistry';
 
 export type GlbAsset = Extract<ModelAsset, { kind: 'glb' }>;
 type RenderMesh = Mesh<BufferGeometry, Material | Material[]>;
