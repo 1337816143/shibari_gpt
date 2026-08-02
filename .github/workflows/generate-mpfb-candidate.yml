@@ -1,0 +1,99 @@
+name: Generate MPFB character candidate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BLENDER_VERSION: '4.5.12'
+      BLENDER_HOME: ${{ runner.temp }}/blender-home
+      OUTPUT_DIR: ${{ runner.temp }}/mpfb-candidate
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download Blender 4.5 LTS
+        run: |
+          set -euo pipefail
+          mkdir -p "$BLENDER_HOME" "$OUTPUT_DIR"
+          curl --fail --location --retry 3 \
+            "https://download.blender.org/release/Blender4.5/blender-${BLENDER_VERSION}-linux-x64.tar.xz" \
+            --output "$RUNNER_TEMP/blender.tar.xz"
+          tar -xf "$RUNNER_TEMP/blender.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/blender-${BLENDER_VERSION}-linux-x64" >> "$GITHUB_PATH"
+
+      - name: Install and enable MPFB extension
+        env:
+          HOME: ${{ env.BLENDER_HOME }}
+        run: |
+          set -euo pipefail
+          blender --online-mode --command extension install -s -e mpfb
+          blender --command extension list | tee "$OUTPUT_DIR/extensions.txt"
+
+      - name: Download CC0 MakeHuman system assets
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            'https://files2.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip' \
+            --output "$RUNNER_TEMP/makehuman-system-assets.zip"
+          test "$(stat -c%s "$RUNNER_TEMP/makehuman-system-assets.zip")" -gt 100000000
+
+      - name: Install MPFB assets
+        env:
+          HOME: ${{ env.BLENDER_HOME }}
+        run: |
+          set -euo pipefail
+          blender -b --python-exit-code 1 \
+            --python tools/blender/install_mpfb_assets.py \
+            -- "$RUNNER_TEMP/makehuman-system-assets.zip" \
+            | tee "$OUTPUT_DIR/install-assets.log"
+
+      - name: Generate GLB and four-view previews
+        env:
+          HOME: ${{ env.BLENDER_HOME }}
+        run: |
+          set -euo pipefail
+          blender -b --python-exit-code 1 \
+            --python tools/blender/generate_mpfb_candidate.py \
+            -- "$OUTPUT_DIR" \
+            | tee "$OUTPUT_DIR/generation.log"
+          test -s "$OUTPUT_DIR/shibari-adult-female-candidate.glb"
+          test -s "$OUTPUT_DIR/preview-front.png"
+          test -s "$OUTPUT_DIR/preview-back.png"
+          test -s "$OUTPUT_DIR/preview-left.png"
+          test -s "$OUTPUT_DIR/preview-right.png"
+          (cd "$OUTPUT_DIR" && sha256sum shibari-adult-female-candidate.glb > SHA256.txt)
+
+      - name: Check candidate budget
+        run: |
+          set -euo pipefail
+          size=$(stat -c%s "$OUTPUT_DIR/shibari-adult-female-candidate.glb")
+          echo "candidate bytes: $size"
+          test "$size" -lt 52428800
+          python - <<'PY'
+          import json, os, pathlib
+          output = pathlib.Path(os.environ['OUTPUT_DIR'])
+          report = json.loads((output / 'candidate-report.json').read_text())
+          assert report['armatureCount'] >= 1, report
+          assert report['boneCount'] >= 10, report
+          assert report['meshCount'] >= 2, report
+          assert report['adultPresentation'] is True, report
+          assert report['presentation'] == 'neutral-fully-clothed', report
+          print(json.dumps(report, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Upload technical-review candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpfb-adult-female-candidate
+          path: ${{ env.OUTPUT_DIR }}
+          if-no-files-found: error
+          retention-days: 7
