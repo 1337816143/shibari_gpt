@@ -9,7 +9,7 @@ on:
       - 'tools/blender/**'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: mpfb-character-candidate
@@ -103,3 +103,29 @@ jobs:
           path: ${{ env.OUTPUT_DIR }}
           if-no-files-found: error
           retention-days: 7
+
+      - name: Publish to isolated review branch
+        run: |
+          set -euo pipefail
+          git fetch origin agent/mpfb-candidate
+          git switch agent/mpfb-candidate
+          target='candidate-output/mpfb-adult-female'
+          rm -rf "$target"
+          mkdir -p "$target"
+          cp "$OUTPUT_DIR"/shibari-adult-female-candidate.glb "$target"/
+          cp "$OUTPUT_DIR"/preview-*.png "$target"/
+          cp "$OUTPUT_DIR"/candidate-report.json "$target"/
+          cp "$OUTPUT_DIR"/SOURCE.md "$target"/
+          cp "$OUTPUT_DIR"/LICENSE.txt "$target"/
+          cp "$OUTPUT_DIR"/SHA256.txt "$target"/
+          cp "$OUTPUT_DIR"/generation.log "$target"/
+          git add "$target"
+          if git diff --cached --quiet; then
+            echo 'Candidate review branch is already current'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Generate MPFB adult female candidate'
+          git pull --rebase origin agent/mpfb-candidate
+          git push origin HEAD:agent/mpfb-candidate
