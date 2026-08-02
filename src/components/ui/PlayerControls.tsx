@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Lock, Pause, Play, Repeat1, RotateCcw } from 'lucide-react';
+import '../../player-mobile.css';
 
 interface PlayerControlsProps {
   stepIndex: number;
