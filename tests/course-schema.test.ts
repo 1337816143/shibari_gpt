@@ -68,6 +68,28 @@ describe('course schema', () => {
     }).success).toBe(false);
   });
 
+  it('requires every semantic teaching anchor to exist in the model bone map', () => {
+    const firstStep = demoCourse.steps[0];
+    const firstSegment = firstStep?.ropeSegments[0];
+    if (!firstStep || !firstSegment) throw new Error('Demo course fixture is incomplete');
+
+    const anchoredStep = {
+      ...firstStep,
+      ropeSegments: [{ ...firstSegment, anchorBone: 'rightForearm' }, ...firstStep.ropeSegments.slice(1)],
+    };
+    const missingMap = { ...demoCourse, steps: [anchoredStep, ...demoCourse.steps.slice(1)] };
+    expect(courseSchema.safeParse(missingMap).success).toBe(false);
+
+    const mapped = {
+      ...missingMap,
+      modelAsset: {
+        ...demoCourse.modelAsset,
+        boneMap: { rightForearm: 'RightForeArm' },
+      },
+    };
+    expect(courseSchema.safeParse(mapped).success).toBe(true);
+  });
+
   it('rejects a course whose model id and asset id diverge', () => {
     expect(courseSchema.safeParse({ ...demoCourse, modelId: 'different-model' }).success).toBe(false);
   });
