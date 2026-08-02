@@ -5,9 +5,18 @@ on:
     branches: [phase2-staging]
     paths:
       - '.github/workflows/apply-phase2.yml'
+  pull_request:
+    branches: [agent/phase-1-3d-poc]
+    paths:
+      - '.github/workflows/apply-phase2.yml'
+      - '.agent-phase2/**'
 
 permissions:
   contents: write
+
+concurrency:
+  group: apply-phase2-staging
+  cancel-in-progress: false
 
 jobs:
   apply:
