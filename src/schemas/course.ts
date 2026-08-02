@@ -87,14 +87,40 @@ export const poseSchema = z.object({
   version: z.string().min(1),
 });
 
-export const modelAssetSchema = z.object({
+const modelAssetBaseSchema = z.object({
   id: z.string().min(1),
-  kind: z.enum(['procedural', 'glb']),
-  url: z.string().optional(),
   license: z.string().min(1),
   attribution: z.string().min(1),
   status: z.enum(['placeholder', 'technical-review', 'approved']),
 });
+
+export const modelTransformSchema = z.object({
+  position: vector3Schema,
+  rotation: vector3Schema,
+  scale: vector3Schema.refine((value) => value.every((axis) => axis !== 0), {
+    message: 'Model scale axes cannot be zero',
+  }),
+});
+
+const proceduralModelAssetSchema = modelAssetBaseSchema.extend({
+  kind: z.literal('procedural'),
+});
+
+const glbModelAssetSchema = modelAssetBaseSchema.extend({
+  kind: z.literal('glb'),
+  url: z.string().min(1),
+  sourceUrl: z.string().url(),
+  licenseUrl: z.string().url(),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+  allowRemote: z.boolean(),
+  transform: modelTransformSchema,
+  animationClip: z.string().min(1).optional(),
+});
+
+export const modelAssetSchema = z.discriminatedUnion('kind', [
+  proceduralModelAssetSchema,
+  glbModelAssetSchema,
+]);
 
 export const courseSchema = z.object({
   id: z.string().min(1),
@@ -124,4 +150,5 @@ export const courseSchema = z.object({
 
 export type Course = z.infer<typeof courseSchema>;
 export type CourseStep = z.infer<typeof courseStepSchema>;
+export type ModelAsset = z.infer<typeof modelAssetSchema>;
 export type ViewPresetId = z.infer<typeof viewPresetSchema>;
