@@ -10,11 +10,11 @@ describe('App', () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(() => cleanup());
 
-  it('requires safety consent before loading the 3D studio', async () => {
+  it('loads the interactive scene only after acknowledgement', async () => {
     render(<App />);
     expect(screen.getByRole('heading', { name: /只发布完成审核的课程/ })).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: /单柱基础/ }).length).toBeGreaterThan(0);
-    expect(screen.getByText(/第二阶段 PoC/)).toBeInTheDocument();
+    expect(screen.getByText(/第三阶段 PoC/)).toBeInTheDocument();
     expect(screen.queryByTestId('scene')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('link', { name: '进入 3D 练习室' }));
