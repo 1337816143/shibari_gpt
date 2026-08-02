@@ -4,8 +4,9 @@ import { riggedFigureQaAsset } from '../src/data/modelAssets';
 import { courseSchema, modelAssetSchema } from '../src/schemas/course';
 
 describe('course schema', () => {
-  it('accepts the demo course', () => {
+  it('accepts the demo course and materializes review records', () => {
     expect(courseSchema.safeParse(demoCourse).success).toBe(true);
+    expect(demoCourse.reviewRecords).toEqual([]);
   });
 
   it('keeps contextual checks and visual teaching metadata attached to every step', () => {
@@ -20,9 +21,11 @@ describe('course schema', () => {
     expect(demoCourse.modelAsset.status).toBe('placeholder');
   });
 
-  it('accepts a fully attributed GLB candidate for technical loader testing', () => {
+  it('accepts a fully attributed local GLB candidate with load budgets', () => {
     expect(modelAssetSchema.safeParse(riggedFigureQaAsset).success).toBe(true);
     expect(riggedFigureQaAsset.status).toBe('technical-review');
+    expect(riggedFigureQaAsset.allowRemote).toBe(false);
+    expect(riggedFigureQaAsset.maxBytes).toBeLessThanOrEqual(8 * 1024 * 1024);
   });
 
   it('rejects GLB entries without source, license and transform metadata', () => {
@@ -33,5 +36,14 @@ describe('course schema', () => {
       attribution: 'unknown',
       status: 'technical-review',
     }).success).toBe(false);
+  });
+
+  it('rejects zero-scale and excessive model budgets', () => {
+    const invalid = {
+      ...riggedFigureQaAsset,
+      maxBytes: 80 * 1024 * 1024,
+      transform: { ...riggedFigureQaAsset.transform, scale: [1, 0, 1] },
+    };
+    expect(modelAssetSchema.safeParse(invalid).success).toBe(false);
   });
 });
