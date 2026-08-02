@@ -1,12 +1,18 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
+
+vi.mock('../src/components/scene/StudioScene', () => ({
+  StudioScene: () => {
+    throw new Error('Deterministic scene initialization failure');
+  },
+}));
 
 describe('App', () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(() => cleanup());
 
-  it('requires acknowledgement and falls back when WebGL is unavailable', async () => {
+  it('requires acknowledgement and falls back when the scene cannot initialize', async () => {
     render(<App />);
     expect(screen.getByText(/第四阶段 PoC/)).toBeInTheDocument();
 
@@ -15,6 +21,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '我已了解' }));
     expect(await screen.findByRole('img', { name: /简化二维绳路图/ })).toBeInTheDocument();
+    expect(screen.getByText(/3D 场景无法初始化/)).toBeInTheDocument();
   });
 
   it('stores favorites and offers the diagram fallback', () => {
