@@ -6,6 +6,7 @@ import type { SceneSettings } from '../../types/scene';
 import { CameraRig } from './CameraRig';
 import { ModelAssetRenderer } from './ModelAssetRenderer';
 import { RopePath } from './RopePath';
+import { TeachingModelProvider } from './TeachingModelContext';
 import { TeachingOverlays } from './TeachingOverlays';
 
 interface StudioSceneProps {
@@ -38,23 +39,25 @@ export function StudioScene({ course, modelAsset, step, progress, settings, onQu
       <directionalLight position={[4, 7, 4]} intensity={2.4} castShadow shadow-mapSize={[1024, 1024]} />
       <directionalLight position={[-3, 3, -2]} intensity={0.8} />
       <Suspense fallback={<Html center><div className="scene-loader">加载 3D 场景…</div></Html>}>
-        <group scale={settings.mirrored ? [-1, 1, 1] : [1, 1, 1]}>
-          {settings.modelVisible && <ModelAssetRenderer asset={activeModelAsset} opacity={settings.modelOpacity} />}
-        </group>
-        <RopePath
-          step={step}
-          progress={progress}
-          showCompleted={settings.completedRopeVisible}
-          mirrored={settings.mirrored}
-        />
-        <TeachingOverlays
-          step={step}
-          mirrored={settings.mirrored}
-          showCues={settings.teachingCuesVisible}
-          showContacts={settings.contactOverlayVisible}
-          showRisks={settings.riskOverlayVisible}
-          showErrors={settings.errorOverlayVisible}
-        />
+        <TeachingModelProvider>
+          <group scale={settings.mirrored ? [-1, 1, 1] : [1, 1, 1]}>
+            {settings.modelVisible && <ModelAssetRenderer asset={activeModelAsset} opacity={settings.modelOpacity} />}
+          </group>
+          <RopePath
+            step={step}
+            progress={progress}
+            showCompleted={settings.completedRopeVisible}
+            mirrored={settings.mirrored}
+          />
+          <TeachingOverlays
+            step={step}
+            mirrored={settings.mirrored}
+            showCues={settings.teachingCuesVisible}
+            showContacts={settings.contactOverlayVisible}
+            showRisks={settings.riskOverlayVisible}
+            showErrors={settings.errorOverlayVisible}
+          />
+        </TeachingModelProvider>
         <ContactShadows position={[0, -0.55, 0]} opacity={0.45} scale={5.5} blur={2.7} far={2.8} />
       </Suspense>
       <CameraRig course={course} preset={settings.viewPreset} locked={settings.cameraLocked} mirrored={settings.mirrored} />
