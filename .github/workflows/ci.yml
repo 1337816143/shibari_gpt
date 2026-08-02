@@ -39,10 +39,7 @@ jobs:
       - run: npm run test:e2e
 
   generate-mpfb-candidate:
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.base.ref == 'agent/phase-1-3d-poc' &&
-      startsWith(github.event.pull_request.head.ref, 'agent/mpfb-trigger-')
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 1
     needs: validate
     permissions:
       contents: write
