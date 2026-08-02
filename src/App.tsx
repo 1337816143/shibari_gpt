@@ -1,12 +1,16 @@
 import { BookOpenCheck, Check, CircleAlert, Layers3, Menu, ShieldCheck, Sparkles, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { StudioScene } from './components/scene/StudioScene';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { PlayerControls } from './components/ui/PlayerControls';
 import { SceneToolbar } from './components/ui/SceneToolbar';
 import { StepPanel } from './components/ui/StepPanel';
 import { demoCourse } from './data/demoCourse';
 import { usePlayback } from './hooks/usePlayback';
 import type { SceneSettings } from './types/scene';
+import './scene-launch.css';
+
+const StudioScene = lazy(() =>
+  import('./components/scene/StudioScene').then((module) => ({ default: module.StudioScene })),
+);
 
 const initialSettings: SceneSettings = {
   viewPreset: 'front',
@@ -26,6 +30,7 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [studioActivated, setStudioActivated] = useState(false);
   const step = course.steps[playback.stepIndex] ?? course.steps[0];
 
   if (!step) throw new Error('Course has no steps');
@@ -40,7 +45,7 @@ export function App() {
           <span><strong>Shibari Studio</strong><small>3D Safety-first Learning</small></span>
         </a>
         <nav className={menuOpen ? 'nav is-open' : 'nav'}>
-          <a href="#course">练习室</a><a href="#path">学习路径</a><a href="#safety">安全入门</a><a href="#research">研究与审核</a>
+          <a href="#course" onClick={() => setStudioActivated(true)}>练习室</a><a href="#path">学习路径</a><a href="#safety">安全入门</a><a href="#research">研究与审核</a>
         </nav>
         <button className="menu-button" onClick={() => setMenuOpen((value) => !value)} aria-label="切换菜单">{menuOpen ? <X /> : <Menu />}</button>
         <div className="status-chip"><span />技术 PoC · 未经课程审核</div>
@@ -52,7 +57,7 @@ export function App() {
             <span className="kicker"><Sparkles size={16} />可旋转人物 · 分步绳路 · 步骤安全提示</span>
             <h1>把每一段绳路，<br /><em>看清楚再练习。</em></h1>
             <p>一个面向成年学习者的 3D 互动教学原型。当前版本验证相机、绳路、播放器、风险叠层和课程 Schema；不替代线下专业指导。</p>
-            <div className="hero__actions"><a className="primary-button" href="#course">进入 3D 练习室</a><a className="secondary-button" href="#research">查看技术限制</a></div>
+            <div className="hero__actions"><a className="primary-button" href="#course" onClick={() => setStudioActivated(true)}>进入 3D 练习室</a><a className="secondary-button" href="#research">查看技术限制</a></div>
             <div className="hero__metrics"><span><strong>360°</strong>自由视角</span><span><strong>4</strong>独立步骤</span><span><strong>3</strong>画质档位</span></div>
           </div>
           <div className="hero__visual" aria-hidden="true">
@@ -67,7 +72,7 @@ export function App() {
             <div className="course-meta"><span>难度：入门</span><span>风险：低</span><span>版本：{course.courseVersion}</span></div>
           </header>
 
-          {!acknowledged && (
+          {studioActivated && !acknowledged && (
             <div className="consent-banner" role="alert">
               <CircleAlert size={22} />
               <div><strong>开始前确认</strong><p>本课程是工程原型，不是已经通过专业绳师和医疗安全审查的正式教程。禁止承重、吊缚或在无法立即解除的环境中使用。</p></div>
@@ -79,16 +84,26 @@ export function App() {
             <div className="viewer-column">
               <div className="viewer-card">
                 <div className="viewer-badge">STEP {String(playback.stepIndex + 1).padStart(2, '0')}</div>
-                <StudioScene
-                  course={course}
-                  step={step}
-                  progress={playback.progress}
-                  settings={settings}
-                  onQualityFallback={() => {
-                    setSettings((current) => ({ ...current, quality: 'low' }));
-                    setNotice('检测到性能下降，已切换到低性能模式。');
-                  }}
-                />
+                {studioActivated ? (
+                  <Suspense fallback={<div className="scene-launch scene-launch--loading"><span>正在按需加载 3D 引擎…</span></div>}>
+                    <StudioScene
+                      course={course}
+                      step={step}
+                      progress={playback.progress}
+                      settings={settings}
+                      onQualityFallback={() => {
+                        setSettings((current) => ({ ...current, quality: 'low' }));
+                        setNotice('检测到性能下降，已切换到低性能模式。');
+                      }}
+                    />
+                  </Suspense>
+                ) : (
+                  <button className="scene-launch" onClick={() => setStudioActivated(true)}>
+                    <Layers3 size={34} />
+                    <strong>加载 3D 练习室</strong>
+                    <span>首页不会预加载 Three.js；点击后再下载交互引擎。</span>
+                  </button>
+                )}
                 {notice && <button className="performance-notice" onClick={() => setNotice(null)}>{notice}<X size={14} /></button>}
               </div>
               <SceneToolbar settings={settings} onChange={setSettings} />
