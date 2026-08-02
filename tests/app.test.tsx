@@ -1,26 +1,20 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../src/App';
-
-vi.mock('../src/components/scene/StudioScene', () => ({
-  StudioScene: () => <div data-testid="scene">3D scene</div>,
-}));
 
 describe('App', () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(() => cleanup());
 
-  it('loads the interactive scene only after acknowledgement', async () => {
+  it('requires acknowledgement and falls back when WebGL is unavailable', async () => {
     render(<App />);
     expect(screen.getByText(/第四阶段 PoC/)).toBeInTheDocument();
-    expect(screen.queryByTestId('scene')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('link', { name: '进入 3D 练习室' }));
     expect(screen.getByText(/本课程是工程原型/)).toBeInTheDocument();
-    expect(screen.queryByTestId('scene')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '我已了解' }));
-    expect(await screen.findByTestId('scene')).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: /简化二维绳路图/ })).toBeInTheDocument();
   });
 
   it('stores favorites and offers the diagram fallback', () => {
