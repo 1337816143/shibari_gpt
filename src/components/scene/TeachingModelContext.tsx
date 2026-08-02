@@ -13,7 +13,7 @@ const TeachingModelContext = createContext<TeachingModelRegistry | null>(null);
 
 export function TeachingModelProvider({ children }: { children: ReactNode }) {
   const [root, setRoot] = useState<Object3D | null>(null);
-  const [bones, setBones] = useState<ReadonlyMap<string, Object3D>>(new Map());
+  const [bones, setBones] = useState<ReadonlyMap<string, Object3D>>(new Map<string, Object3D>());
   const [revision, setRevision] = useState(0);
 
   const registerModel = useCallback((modelRoot: Object3D, boneMap: Readonly<Record<string, string>> = {}) => {
@@ -22,7 +22,7 @@ export function TeachingModelProvider({ children }: { children: ReactNode }) {
       if (object.type === 'Bone' && object.name) byActualName.set(object.name, object);
     });
 
-    const registry = new Map(byActualName);
+    const registry = new Map<string, Object3D>(byActualName);
     Object.entries(boneMap).forEach(([semanticName, actualName]) => {
       const bone = byActualName.get(actualName);
       if (bone) registry.set(semanticName, bone);
@@ -34,7 +34,7 @@ export function TeachingModelProvider({ children }: { children: ReactNode }) {
 
     return () => {
       setRoot((current) => (current === modelRoot ? null : current));
-      setBones((current) => (current === registry ? new Map() : current));
+      setBones((current) => (current === registry ? new Map<string, Object3D>() : current));
       setRevision((value) => value + 1);
     };
   }, []);
@@ -53,10 +53,10 @@ export function useTeachingModel() {
   return context;
 }
 
-export function BoneAnchor({ name, children, fallback = null }: {
-  name?: string;
+export function BoneAnchor({ name, children, fallback }: {
+  name: string | undefined;
   children: ReactNode;
-  fallback?: ReactNode;
+  fallback: ReactNode;
 }) {
   const { bones } = useTeachingModel();
   if (!name) return children;
