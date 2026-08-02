@@ -1,11 +1,11 @@
 import { AdaptiveDpr, ContactShadows, Html, PerformanceMonitor } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import type { CourseStep, Course } from '../../schemas/course';
 import type { SceneSettings } from '../../types/scene';
 import { CameraRig } from './CameraRig';
-import { RiskZones } from './RiskZones';
 import { RopePath } from './RopePath';
+import { TeachingOverlays } from './TeachingOverlays';
 import { TrainingMannequin } from './TrainingMannequin';
 
 interface StudioSceneProps {
@@ -16,8 +16,14 @@ interface StudioSceneProps {
   onQualityFallback: () => void;
 }
 
+function qualityDpr(quality: SceneSettings['quality']) {
+  return quality === 'high' ? 2 : quality === 'low' ? 1 : 1.5;
+}
+
 export function StudioScene({ course, step, progress, settings, onQualityFallback }: StudioSceneProps) {
-  const [dpr, setDpr] = useState(settings.quality === 'high' ? 2 : settings.quality === 'low' ? 1 : 1.5);
+  const [dpr, setDpr] = useState(() => qualityDpr(settings.quality));
+
+  useEffect(() => setDpr(qualityDpr(settings.quality)), [settings.quality]);
 
   return (
     <Canvas
@@ -42,7 +48,14 @@ export function StudioScene({ course, step, progress, settings, onQualityFallbac
           showCompleted={settings.completedRopeVisible}
           mirrored={settings.mirrored}
         />
-        <RiskZones visible={settings.riskOverlayVisible} mirrored={settings.mirrored} />
+        <TeachingOverlays
+          step={step}
+          mirrored={settings.mirrored}
+          showCues={settings.teachingCuesVisible}
+          showContacts={settings.contactOverlayVisible}
+          showRisks={settings.riskOverlayVisible}
+          showErrors={settings.errorOverlayVisible}
+        />
         <ContactShadows position={[0, -0.55, 0]} opacity={0.45} scale={5.5} blur={2.7} far={2.8} />
       </Suspense>
       <CameraRig course={course} preset={settings.viewPreset} locked={settings.cameraLocked} mirrored={settings.mirrored} />

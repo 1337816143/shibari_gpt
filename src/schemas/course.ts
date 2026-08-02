@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
+export const viewPresetSchema = z.enum(['front', 'back', 'left', 'right', 'top', 'detail']);
 const vector3Schema = z.tuple([z.number(), z.number(), z.number()]);
 
 export const cameraPresetSchema = z.object({
-  id: z.string().min(1),
+  id: viewPresetSchema,
   label: z.string().min(1),
   position: vector3Schema,
   target: vector3Schema,
@@ -24,6 +25,35 @@ export const safetyCheckSchema = z.object({
   instruction: z.string().min(1),
 });
 
+export const contactPointSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  kind: z.enum(['contact', 'check', 'risk']),
+  position: vector3Schema,
+  note: z.string().min(1),
+});
+
+export const handCueSchema = z.object({
+  hand: z.enum(['left', 'right', 'both']),
+  label: z.string().min(1),
+  position: vector3Schema,
+  target: vector3Schema,
+});
+
+export const directionCueSchema = z.object({
+  label: z.string().min(1),
+  from: vector3Schema,
+  to: vector3Schema,
+});
+
+export const errorStateSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  description: z.string().min(1),
+  risk: z.string().min(1),
+  ropeSegments: z.array(ropeSegmentSchema).min(1),
+});
+
 export const courseStepSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -33,10 +63,15 @@ export const courseStepSchema = z.object({
   verification: z.string().min(1),
   commonErrors: z.array(z.string().min(1)),
   releaseInstruction: z.string().min(1),
-  recommendedView: z.string().min(1),
+  recommendedView: viewPresetSchema,
   focusPoint: vector3Schema,
   ropeSegments: z.array(ropeSegmentSchema),
-  safetyChecks: z.array(safetyCheckSchema),
+  safetyChecks: z.array(safetyCheckSchema).min(1),
+  completionChecklist: z.array(z.string().min(1)).min(1),
+  contactPoints: z.array(contactPointSchema),
+  handCue: handCueSchema.optional(),
+  directionCue: directionCueSchema.optional(),
+  errorStates: z.array(errorStateSchema),
 });
 
 export const poseSchema = z.object({
@@ -46,10 +81,19 @@ export const poseSchema = z.object({
   supportState: z.string().min(1),
   jointNotes: z.record(z.string(), z.string()),
   prohibitedDrift: z.array(z.string()),
-  recommendedViews: z.array(z.string()),
+  recommendedViews: z.array(viewPresetSchema),
   riskRegions: z.array(z.string()),
   sourceStatus: z.enum(['draft', 'reviewed', 'approved']),
   version: z.string().min(1),
+});
+
+export const modelAssetSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(['procedural', 'glb']),
+  url: z.string().optional(),
+  license: z.string().min(1),
+  attribution: z.string().min(1),
+  status: z.enum(['placeholder', 'technical-review', 'approved']),
 });
 
 export const courseSchema = z.object({
@@ -57,11 +101,16 @@ export const courseSchema = z.object({
   title: z.string().min(1),
   aliases: z.array(z.string()),
   summary: z.string().min(1),
+  category: z.enum(['safety', 'rope-handling', 'foundations', 'body-path']),
+  tags: z.array(z.string().min(1)),
+  estimatedMinutes: z.number().int().positive(),
+  learningObjectives: z.array(z.string().min(1)).min(1),
   difficulty: z.enum(['intro', 'beginner', 'intermediate', 'advanced']),
   riskLevel: z.enum(['low', 'moderate', 'high', 'critical']),
   prerequisites: z.array(z.string()),
   equipment: z.array(z.string()),
   modelId: z.string().min(1),
+  modelAsset: modelAssetSchema,
   pose: poseSchema,
   cameraPresets: z.array(cameraPresetSchema).min(1),
   steps: z.array(courseStepSchema).min(1),
@@ -75,3 +124,4 @@ export const courseSchema = z.object({
 
 export type Course = z.infer<typeof courseSchema>;
 export type CourseStep = z.infer<typeof courseStepSchema>;
+export type ViewPresetId = z.infer<typeof viewPresetSchema>;

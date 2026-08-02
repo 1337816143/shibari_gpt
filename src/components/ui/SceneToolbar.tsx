@@ -1,4 +1,4 @@
-import { Camera, Eye, EyeOff, FlipHorizontal2, Gauge, Lock, ShieldAlert, Unlock } from 'lucide-react';
+import { Box, Camera, Eye, EyeOff, FlipHorizontal2, Gauge, Hand, Layers2, Lock, Route, ScanLine, ShieldAlert, Unlock, Waypoints } from 'lucide-react';
 import type { QualityMode, SceneSettings, ViewPreset } from '../../types/scene';
 
 const views: Array<{ id: ViewPreset; label: string }> = [
@@ -22,10 +22,13 @@ export function SceneToolbar({ settings, onChange }: SceneToolbarProps) {
       <div className="toolbar-group toolbar-group--views">
         <span className="toolbar-label"><Camera size={15} />视角</span>
         {views.map((view) => (
-          <button key={view.id} className={settings.viewPreset === view.id ? 'is-active' : ''} onClick={() => patch({ viewPreset: view.id })}>
+          <button key={view.id} className={settings.viewPreset === view.id ? 'is-active' : ''} onClick={() => patch({ viewPreset: view.id, autoFollow: false })}>
             {view.label}
           </button>
         ))}
+        <button className={settings.autoFollow ? 'is-active' : ''} onClick={() => patch({ autoFollow: !settings.autoFollow })}>
+          <ScanLine size={15} />自动跟随
+        </button>
       </div>
       <div className="toolbar-group">
         <button onClick={() => patch({ cameraLocked: !settings.cameraLocked })}>
@@ -39,8 +42,25 @@ export function SceneToolbar({ settings, onChange }: SceneToolbarProps) {
           {settings.modelVisible ? <Eye size={15} /> : <EyeOff size={15} />}
           人物
         </button>
+        <button className={settings.completedRopeVisible ? 'is-active' : ''} onClick={() => patch({ completedRopeVisible: !settings.completedRopeVisible })}>
+          <Layers2 size={15} />已完成绳段
+        </button>
+      </div>
+      <div className="toolbar-group">
+        <button className={settings.teachingCuesVisible ? 'is-active' : ''} onClick={() => patch({ teachingCuesVisible: !settings.teachingCuesVisible })}>
+          <Hand size={15} />操作提示
+        </button>
+        <button className={settings.contactOverlayVisible ? 'is-active' : ''} onClick={() => patch({ contactOverlayVisible: !settings.contactOverlayVisible })}>
+          <Waypoints size={15} />接触点
+        </button>
         <button className={settings.riskOverlayVisible ? 'is-active is-danger' : ''} onClick={() => patch({ riskOverlayVisible: !settings.riskOverlayVisible })}>
           <ShieldAlert size={15} />风险层
+        </button>
+        <button className={settings.errorOverlayVisible ? 'is-active is-danger' : ''} onClick={() => patch({ errorOverlayVisible: !settings.errorOverlayVisible })}>
+          <Route size={15} />错误对比
+        </button>
+        <button className={settings.renderMode === 'diagram' ? 'is-active' : ''} onClick={() => patch({ renderMode: settings.renderMode === '3d' ? 'diagram' : '3d' })}>
+          <Box size={15} />{settings.renderMode === '3d' ? '简化图' : '返回 3D'}
         </button>
       </div>
       <div className="toolbar-group toolbar-group--sliders">

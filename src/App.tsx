@@ -1,9 +1,13 @@
-import { BookOpenCheck, Check, CircleAlert, Layers3, Menu, ShieldCheck, Sparkles, X } from 'lucide-react';
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { BookOpenCheck, Check, CircleAlert, Clock3, Heart, Layers3, Menu, RotateCcw, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { CourseLibrary } from './components/ui/CourseLibrary';
 import { PlayerControls } from './components/ui/PlayerControls';
+import { SceneBoundary } from './components/ui/SceneBoundary';
 import { SceneToolbar } from './components/ui/SceneToolbar';
+import { StepDiagram } from './components/ui/StepDiagram';
 import { StepPanel } from './components/ui/StepPanel';
 import { demoCourse } from './data/demoCourse';
+import { useLearningProgress } from './hooks/useLearningProgress';
 import { usePlayback } from './hooks/usePlayback';
 import type { SceneSettings } from './types/scene';
 import './scene-launch.css';
@@ -15,17 +19,23 @@ const StudioScene = lazy(() =>
 const initialSettings: SceneSettings = {
   viewPreset: 'front',
   quality: 'standard',
+  renderMode: '3d',
   mirrored: false,
   modelVisible: true,
   modelOpacity: 1,
   completedRopeVisible: true,
   riskOverlayVisible: true,
+  contactOverlayVisible: true,
+  teachingCuesVisible: true,
+  errorOverlayVisible: false,
   cameraLocked: false,
+  autoFollow: true,
 };
 
 export function App() {
   const course = demoCourse;
-  const playback = usePlayback(course.steps.length);
+  const learning = useLearningProgress(course.id);
+  const playback = usePlayback(course.steps.length, learning.lastStepIndex);
   const [settings, setSettings] = useState(initialSettings);
   const [menuOpen, setMenuOpen] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -35,7 +45,44 @@ export function App() {
 
   if (!step) throw new Error('Course has no steps');
 
-  const completion = useMemo(() => Math.round(((playback.stepIndex + playback.progress) / course.steps.length) * 100), [course.steps.length, playback.progress, playback.stepIndex]);
+  const animationCompletion = useMemo(
+    () => Math.round(((playback.stepIndex + playback.progress) / course.steps.length) * 100),
+    [course.steps.length, playback.progress, playback.stepIndex],
+  );
+  const masteryCompletion = Math.round((learning.completedStepIds.length / course.steps.length) * 100);
+
+  useEffect(() => {
+    learning.setLastStepIndex(playback.stepIndex);
+    if (!settings.autoFollow) return;
+    setSettings((current) => current.viewPreset === step.recommendedView
+      ? current
+      : { ...current, viewPreset: step.recommendedView });
+  }, [learning.setLastStepIndex, playback.stepIndex, settings.autoFollow, step.recommendedView]);
+
+  const activateStudio = () => {
+    setStudioActivated(true);
+    setMenuOpen(false);
+  };
+
+  const handleNext = () => {
+    learning.markStepComplete(step.id);
+    playback.next();
+  };
+
+  const handleReset = () => {
+    learning.reset();
+    playback.goToStep(0);
+    setAcknowledged(false);
+  };
+
+  const diagram = (
+    <StepDiagram
+      step={step}
+      progress={playback.progress}
+      mirrored={settings.mirrored}
+      showErrors={settings.errorOverlayVisible}
+    />
+  );
 
   return (
     <div className="app-shell">
@@ -45,10 +92,10 @@ export function App() {
           <span><strong>Shibari Studio</strong><small>3D Safety-first Learning</small></span>
         </a>
         <nav className={menuOpen ? 'nav is-open' : 'nav'}>
-          <a href="#course" onClick={() => setStudioActivated(true)}>练习室</a><a href="#path">学习路径</a><a href="#safety">安全入门</a><a href="#research">研究与审核</a>
+          <a href="#library">课程库</a><a href="#course" onClick={activateStudio}>练习室</a><a href="#path">学习路径</a><a href="#safety">安全入门</a><a href="#research">研究与审核</a>
         </nav>
         <button className="menu-button" onClick={() => setMenuOpen((value) => !value)} aria-label="切换菜单">{menuOpen ? <X /> : <Menu />}</button>
-        <div className="status-chip"><span />技术 PoC · 未经课程审核</div>
+        <div className="status-chip"><span />第二阶段 PoC · 未经课程审核</div>
       </header>
 
       <main id="top">
@@ -56,21 +103,39 @@ export function App() {
           <div className="hero__copy">
             <span className="kicker"><Sparkles size={16} />可旋转人物 · 分步绳路 · 步骤安全提示</span>
             <h1>把每一段绳路，<br /><em>看清楚再练习。</em></h1>
-            <p>一个面向成年学习者的 3D 互动教学原型。当前版本验证相机、绳路、播放器、风险叠层和课程 Schema；不替代线下专业指导。</p>
-            <div className="hero__actions"><a className="primary-button" href="#course" onClick={() => setStudioActivated(true)}>进入 3D 练习室</a><a className="secondary-button" href="#research">查看技术限制</a></div>
-            <div className="hero__metrics"><span><strong>360°</strong>自由视角</span><span><strong>4</strong>独立步骤</span><span><strong>3</strong>画质档位</span></div>
+            <p>面向成年学习者的 3D 互动教学原型。现在已经加入操作手、绳头方向、接触点、错误对比、学习记录与低性能降级；仍不替代线下专业指导。</p>
+            <div className="hero__actions"><a className="primary-button" href="#course" onClick={activateStudio}>进入 3D 练习室</a><a className="secondary-button" href="#library">浏览课程库</a></div>
+            <div className="hero__metrics"><span><strong>360°</strong>自由视角</span><span><strong>{course.steps.length}</strong>独立步骤</span><span><strong>2D/3D</strong>双模式</span></div>
           </div>
           <div className="hero__visual" aria-hidden="true">
             <div className="orb orb--one" /><div className="orb orb--two" />
-            <div className="hero-card"><ShieldCheck size={32} /><strong>Safety is contextual</strong><span>风险提示必须绑定到具体姿势和具体步骤。</span></div>
+            <div className="hero-card"><ShieldCheck size={32} /><strong>Safety is contextual</strong><span>风险提示绑定具体姿势、接触位置和操作步骤。</span></div>
           </div>
         </section>
 
+        <CourseLibrary activeCourse={course} onOpenCourse={activateStudio} />
+
         <section id="course" className="course-layout">
-          <header className="section-heading">
+          <header className="section-heading course-heading">
             <div><span className="eyebrow">示范课程 · Prototype only</span><h2>{course.title}</h2><p>{course.summary}</p></div>
-            <div className="course-meta"><span>难度：入门</span><span>风险：低</span><span>版本：{course.courseVersion}</span></div>
+            <div className="course-heading__actions">
+              <button className={learning.favorite ? 'is-active' : ''} onClick={learning.toggleFavorite} aria-label={learning.favorite ? '取消收藏课程' : '收藏课程'}><Heart size={17} fill={learning.favorite ? 'currentColor' : 'none'} />{learning.favorite ? '已收藏' : '收藏'}</button>
+              <button onClick={handleReset}><RotateCcw size={17} />重置记录</button>
+            </div>
           </header>
+
+          <div className="course-overview">
+            <article><span>预计时长</span><strong><Clock3 size={17} />{course.estimatedMinutes} 分钟</strong></article>
+            <article><span>难度与风险</span><strong>入门 · 低风险 · 非承重</strong></article>
+            <article><span>学习进度</span><strong>{learning.completedStepIds.length}/{course.steps.length} 步</strong><div className="mastery-meter"><i style={{ width: `${masteryCompletion}%` }} /></div></article>
+            <article><span>资产状态</span><strong>程序化占位模型 · 待审核</strong></article>
+          </div>
+
+          <div className="course-brief-grid">
+            <article><h3>学习目标</h3><ul>{course.learningObjectives.map((item) => <li key={item}>{item}</li>)}</ul></article>
+            <article><h3>前置知识</h3><ul>{course.prerequisites.map((item) => <li key={item}>{item}</li>)}</ul></article>
+            <article><h3>所需材料</h3><ul>{course.equipment.map((item) => <li key={item}>{item}</li>)}</ul></article>
+          </div>
 
           {studioActivated && !acknowledged && (
             <div className="consent-banner" role="alert">
@@ -84,21 +149,29 @@ export function App() {
             <div className="viewer-column">
               <div className="viewer-card">
                 <div className="viewer-badge">STEP {String(playback.stepIndex + 1).padStart(2, '0')}</div>
-                {studioActivated ? (
-                  <Suspense fallback={<div className="scene-launch scene-launch--loading"><span>正在按需加载 3D 引擎…</span></div>}>
-                    <StudioScene
-                      course={course}
-                      step={step}
-                      progress={playback.progress}
-                      settings={settings}
-                      onQualityFallback={() => {
-                        setSettings((current) => ({ ...current, quality: 'low' }));
-                        setNotice('检测到性能下降，已切换到低性能模式。');
-                      }}
-                    />
-                  </Suspense>
+                {settings.renderMode === 'diagram' ? diagram : studioActivated ? (
+                  <SceneBoundary
+                    fallback={diagram}
+                    onError={() => {
+                      setSettings((current) => ({ ...current, renderMode: 'diagram' }));
+                      setNotice('3D 场景无法初始化，已切换到简化分步图。');
+                    }}
+                  >
+                    <Suspense fallback={<div className="scene-launch scene-launch--loading"><span>正在按需加载 3D 引擎…</span></div>}>
+                      <StudioScene
+                        course={course}
+                        step={step}
+                        progress={playback.progress}
+                        settings={settings}
+                        onQualityFallback={() => {
+                          setSettings((current) => ({ ...current, quality: 'low' }));
+                          setNotice('检测到性能下降，已切换到低性能模式。');
+                        }}
+                      />
+                    </Suspense>
+                  </SceneBoundary>
                 ) : (
-                  <button className="scene-launch" onClick={() => setStudioActivated(true)}>
+                  <button className="scene-launch" onClick={activateStudio}>
                     <Layers3 size={34} />
                     <strong>加载 3D 练习室</strong>
                     <span>首页不会预加载 Three.js；点击后再下载交互引擎。</span>
@@ -116,7 +189,7 @@ export function App() {
                 speed={playback.speed}
                 speeds={playback.speeds}
                 onPrevious={playback.previous}
-                onNext={playback.next}
+                onNext={handleNext}
                 onPlayToggle={() => playback.setPlaying(!playback.playing)}
                 onReplay={playback.replay}
                 onLoopToggle={() => playback.setLoopStep(!playback.loopStep)}
@@ -124,15 +197,22 @@ export function App() {
                 onSpeed={(value) => playback.setSpeed(value as 0.25 | 0.5 | 1 | 1.5)}
               />
               <div className="step-strip">
-                {course.steps.map((item, index) => (
-                  <button key={item.id} className={index === playback.stepIndex ? 'is-active' : index < playback.stepIndex ? 'is-complete' : ''} onClick={() => playback.goToStep(index)}>
-                    <span>{index < playback.stepIndex ? <Check size={14} /> : index + 1}</span><small>{item.title}</small>
-                  </button>
-                ))}
-                <div className="progress-line" style={{ width: `${completion}%` }} />
+                {course.steps.map((item, index) => {
+                  const complete = learning.completedStepIds.includes(item.id);
+                  return (
+                    <button key={item.id} className={index === playback.stepIndex ? 'is-active' : complete ? 'is-complete' : ''} onClick={() => playback.goToStep(index)}>
+                      <span>{complete ? <Check size={14} /> : index + 1}</span><small>{item.title}</small>
+                    </button>
+                  );
+                })}
+                <div className="progress-line" style={{ width: `${animationCompletion}%` }} />
               </div>
             </div>
-            <StepPanel step={step} />
+            <StepPanel
+              step={step}
+              completed={learning.completedStepIds.includes(step.id)}
+              onToggleComplete={() => learning.toggleStepComplete(step.id)}
+            />
           </div>
         </section>
 
@@ -146,21 +226,21 @@ export function App() {
         </section>
 
         <section id="safety" className="safety-section">
-          <div><span className="eyebrow">医学与风险依据</span><h2>麻木、刺痛、疼痛或无力，不是“正常反应”。</h2><p>持续压力可能造成周围神经损伤。原型将“停止条件”放入每一步，而不是只放在免责声明中。</p></div>
+          <div><span className="eyebrow">医学与风险依据</span><h2>麻木、刺痛、疼痛或无力，不是“正常反应”。</h2><p>持续压力可能造成周围神经损伤。原型将停止条件、接触位置和复查要求放入每一步，而不是只放在免责声明中。</p></div>
           <div className="safety-grid"><article><strong>立即停止</strong><span>麻木、刺痛、灼痛、电击感、运动无力。</span></article><article><strong>循环复查</strong><span>颜色、温度、感觉、主动运动与对称性。</span></article><article><strong>快速解除</strong><span>活动绳头不可立即识别时，使用安全剪。</span></article></div>
         </section>
 
         <section id="research" className="content-section research-section">
           <div className="section-heading"><div><span className="eyebrow">研究与资产状态</span><h2>不伪装 img2threejs 的能力边界</h2></div></div>
           <div className="research-grid">
-            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查 Schema</li><li>程序化成年女性训练模型占位</li><li>样条绳路、逐步显示、播放器、视角与镜像</li><li>响应式桌面/手机布局与性能降级</li></ul></article>
+            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查 Schema</li><li>操作手、绳头方向、接触点与错误对比</li><li>学习记录、收藏、课程搜索筛选</li><li>3D 按需加载和 2D 降级模式</li></ul></article>
             <article><h3>仍需人工完成</h3><ul><li>Image 2 多视图统一人物参考图</li><li>高质量拓扑、骨骼绑定与权重</li><li>专业绳师逐步校验绳路</li><li>医学/人体结构安全审核</li><li>GLB 压缩、LOD、纹理压缩和真机性能测试</li></ul></article>
-            <article className="warning-card"><h3>img2threejs 评估</h3><p>当前工具主要从单张参考图生成程序化 TypeScript/Three.js 模型，不是传统的图像转完整网格服务。多视图、自动绑定和动画仍属于后续路线图，因此不能宣称已经产出可直接用于生产的写实带骨骼人物 GLB。</p></article>
+            <article className="warning-card"><h3>img2threejs 1.4.3 评估</h3><p>当前工具主要从单张参考图生成程序化 TypeScript/Three.js 模型。人物重建、绑定就绪拓扑、自动权重、自动绑定和多视图重建仍分布在后续路线图中，因此不能宣称已经产出可直接用于生产的写实带骨骼人物 GLB。</p></article>
           </div>
         </section>
       </main>
 
-      <footer><span>Shibari Studio PoC</span><span>成年人 · 安全优先 · 未审核课程不得发布</span></footer>
+      <footer><span>Shibari Studio Phase 2 PoC</span><span>成年人 · 安全优先 · 未审核课程不得发布</span></footer>
     </div>
   );
 }

@@ -5,11 +5,26 @@ const courseData = {
   title: '单柱基础：留隙、方向与快速解除',
   aliases: ['Single-column spacing demo', '单柱安全间隙练习'],
   summary: '面向技术验证的低风险入门课程。仅演示绳路可视化、留隙检查和解除顺序，不承载体重，不用于吊缚。',
+  category: 'foundations',
+  tags: ['单柱', '留隙检查', '快速解除', '非承重'],
+  estimatedMinutes: 12,
+  learningObjectives: [
+    '识别关节褶皱和不建议压绳的位置。',
+    '保持绳股平行，并在每一步复查感觉和主动运动。',
+    '能够从活动绳头开始按相反顺序快速解除。',
+  ],
   difficulty: 'intro',
   riskLevel: 'low',
   prerequisites: ['沟通与同意', '停止信号', '安全剪位置', '基础循环检查'],
   equipment: ['直径约 5–6 mm 的柔软练习绳', '安全剪', '可立即解除的开放练习环境'],
   modelId: 'procedural-training-model-v0',
+  modelAsset: {
+    id: 'procedural-training-model-v0',
+    kind: 'procedural',
+    license: 'Project-authored placeholder',
+    attribution: 'Shibari Studio procedural training mannequin',
+    status: 'placeholder',
+  },
   pose: {
     id: 'neutral-arms-forward-v0',
     label: '中立站姿·前臂轻抬',
@@ -24,7 +39,7 @@ const courseData = {
     recommendedViews: ['front', 'detail', 'right'],
     riskRegions: ['腕背浅表神经区', '腕横纹', '肘窝', '上臂中段'],
     sourceStatus: 'draft',
-    version: '0.1.0',
+    version: '0.2.0',
   },
   cameraPresets: [
     { id: 'front', label: '正面', position: [0, 1.55, 4.3], target: [0, 1.35, 0] },
@@ -49,6 +64,24 @@ const courseData = {
       ropeSegments: [
         { id: 'tail-ready', role: 'current', radius: 0.025, points: [[0.45, 1.42, 0.2], [0.7, 1.46, 0.25], [0.9, 1.5, 0.18]] },
       ],
+      handCue: { hand: 'left', label: '左手托住绳身，不拉紧', position: [0.35, 1.34, 0.42], target: [0.65, 1.46, 0.22] },
+      directionCue: { label: '将绳头带到前臂外侧', from: [0.48, 1.43, 0.22], to: [0.98, 1.52, 0.2] },
+      contactPoints: [
+        { id: 'wrist-fold', label: '腕横纹', kind: 'risk', position: [0.91, 1.35, 0.02], note: '不要把闭合绳圈放在关节褶皱上。' },
+        { id: 'practice-zone', label: '本课练习区', kind: 'contact', position: [0.77, 1.48, 0.18], note: '保持在前臂较平整、可持续观察的位置。' },
+      ],
+      completionChecklist: ['停止信号已确认', '安全剪可单手拿到', '腕部保持中立', '基线感觉和主动运动正常'],
+      errorStates: [
+        {
+          id: 'bent-wrist',
+          label: '错误：腕部屈曲后继续操作',
+          description: '腕部姿势改变会让绳索与关节褶皱的相对位置发生变化。',
+          risk: '可能形成局部压力点，也会使后续绳路校验失效。',
+          ropeSegments: [
+            { id: 'error-wrist-line', role: 'current', radius: 0.028, points: [[0.58, 1.34, 0.2], [0.8, 1.34, 0.28], [1.0, 1.34, 0.02], [0.58, 1.34, 0.2]] },
+          ],
+        },
+      ],
       safetyChecks: [
         { id: 'consent', label: '沟通完成', severity: 'warning', bodyRegion: '全身', instruction: '确认双方同意、停止信号和解除方式。' },
         { id: 'wrist-neutral', label: '腕部中立', severity: 'stop', bodyRegion: '右手腕', instruction: '腕部不得被迫屈曲、伸展或旋转。' },
@@ -68,6 +101,25 @@ const courseData = {
       ropeSegments: [
         { id: 'wrap-a', role: 'current', radius: 0.027, points: [[0.5, 1.47, 0.15], [0.72, 1.56, 0.3], [0.95, 1.48, 0.05], [0.73, 1.35, -0.25], [0.5, 1.47, 0.15]] },
         { id: 'tail-a', role: 'tail', radius: 0.024, points: [[0.5, 1.47, 0.15], [0.3, 1.38, 0.35], [0.15, 1.28, 0.52]] },
+      ],
+      handCue: { hand: 'right', label: '右手引导活动绳头', position: [0.24, 1.28, 0.52], target: [0.72, 1.48, 0.16] },
+      directionCue: { label: '沿前臂外侧完成第一圈', from: [0.5, 1.47, 0.15], to: [0.95, 1.48, 0.05] },
+      contactPoints: [
+        { id: 'first-contact', label: '平整接触区', kind: 'contact', position: [0.75, 1.52, 0.28], note: '绳索应平整贴合，不扭转。' },
+        { id: 'two-finger-point', label: '两指检查位置', kind: 'check', position: [0.58, 1.43, 0.19], note: '从可观察的一侧检查间隙，不强行塞入。' },
+        { id: 'wrist-fold', label: '腕横纹', kind: 'risk', position: [0.94, 1.34, 0.02], note: '闭合绳圈应与关节褶皱保持距离。' },
+      ],
+      completionChecklist: ['绳圈平整无扭转', '可轻松完成两指检查', '手指可主动张合', '颜色、温度和感觉无变化'],
+      errorStates: [
+        {
+          id: 'wrap-on-fold',
+          label: '错误：绳圈落在腕横纹',
+          description: '错误绳圈被下移到活动关节褶皱。',
+          risk: '活动时更容易形成局部压力和摩擦，且位置不稳定。',
+          ropeSegments: [
+            { id: 'error-fold-wrap', role: 'current', radius: 0.028, points: [[0.55, 1.34, 0.14], [0.76, 1.42, 0.29], [0.98, 1.34, 0.04], [0.76, 1.23, -0.22], [0.55, 1.34, 0.14]] },
+          ],
+        },
       ],
       safetyChecks: [
         { id: 'two-finger', label: '两指间隙', severity: 'stop', bodyRegion: '右前臂', instruction: '无法轻松插入两指时立即松开。' },
@@ -90,6 +142,26 @@ const courseData = {
         { id: 'wrap-b', role: 'current', radius: 0.027, points: [[0.52, 1.41, 0.16], [0.74, 1.5, 0.31], [0.97, 1.42, 0.05], [0.75, 1.29, -0.24], [0.52, 1.41, 0.16]] },
         { id: 'tail-b', role: 'tail', radius: 0.024, points: [[0.52, 1.41, 0.16], [0.33, 1.3, 0.38], [0.12, 1.2, 0.55]] },
       ],
+      handCue: { hand: 'both', label: '一手维持间隙，一手排列第二圈', position: [0.3, 1.25, 0.48], target: [0.75, 1.41, 0.12] },
+      directionCue: { label: '第二圈与第一圈保持平行', from: [0.52, 1.41, 0.16], to: [0.97, 1.42, 0.05] },
+      contactPoints: [
+        { id: 'parallel-gap', label: '平行间距', kind: 'check', position: [0.75, 1.46, 0.3], note: '两圈不交叉、不压叠，间距基本均匀。' },
+        { id: 'motor-check', label: '主动运动检查', kind: 'check', position: [1.08, 1.25, 0.16], note: '请对方主动张合手指，不由施绳者代替。' },
+        { id: 'edge-pressure', label: '边缘高压风险', kind: 'risk', position: [0.56, 1.37, 0.17], note: '绳股压叠会把压力集中在交叉边缘。' },
+      ],
+      completionChecklist: ['两圈平行且无交叉', '第二圈不比第一圈更紧', '两指检查仍可完成', '末梢主动运动正常'],
+      errorStates: [
+        {
+          id: 'crossed-wraps',
+          label: '错误：两圈交叉压叠',
+          description: '第二圈斜穿第一圈，形成明显交叉点。',
+          risk: '压力会集中在交叉边缘，难以均匀检查和快速解除。',
+          ropeSegments: [
+            { id: 'error-cross-a', role: 'completed', radius: 0.028, points: [[0.51, 1.47, 0.15], [0.74, 1.55, 0.3], [0.96, 1.47, 0.05], [0.74, 1.35, -0.24], [0.51, 1.47, 0.15]] },
+            { id: 'error-cross-b', role: 'current', radius: 0.028, points: [[0.5, 1.36, 0.16], [0.75, 1.53, 0.31], [0.98, 1.45, 0.04], [0.74, 1.27, -0.23], [0.5, 1.36, 0.16]] },
+          ],
+        },
+      ],
       safetyChecks: [
         { id: 'parallel', label: '绳股平行', severity: 'warning', bodyRegion: '右前臂', instruction: '避免绳股交叉形成局部高压点。' },
         { id: 'motor', label: '运动检查', severity: 'stop', bodyRegion: '右手', instruction: '出现手指伸展无力或握力下降时立即解除并停止练习。' },
@@ -109,6 +181,24 @@ const courseData = {
       ropeSegments: [
         { id: 'release-tail', role: 'current', radius: 0.024, points: [[0.52, 1.41, 0.16], [0.38, 1.28, 0.4], [0.15, 1.18, 0.6]] },
       ],
+      handCue: { hand: 'right', label: '找到活动绳头后逆向退出', position: [0.15, 1.18, 0.6], target: [0.52, 1.41, 0.16] },
+      directionCue: { label: '沿原路径反向解除', from: [0.15, 1.18, 0.6], to: [0.52, 1.41, 0.16] },
+      contactPoints: [
+        { id: 'active-tail', label: '活动绳头', kind: 'contact', position: [0.15, 1.18, 0.6], note: '从可识别的活动绳头开始，不拉扯整圈。' },
+        { id: 'post-check', label: '解除后复查', kind: 'check', position: [0.9, 1.45, 0.13], note: '复查感觉、颜色、温度和主动运动。' },
+      ],
+      completionChecklist: ['活动绳头可立即识别', '按第二圈到第一圈的顺序解除', '解除过程中不拉扯关节', '解除后检查无异常'],
+      errorStates: [
+        {
+          id: 'pull-entire-loop',
+          label: '错误：直接拉拽整段绳圈',
+          description: '未识别活动绳头，向远端拉拽闭合绳圈。',
+          risk: '可能增加摩擦和局部压力，也会牵动手腕姿势。',
+          ropeSegments: [
+            { id: 'error-pull', role: 'current', radius: 0.029, points: [[0.55, 1.45, 0.16], [0.78, 1.55, 0.31], [1.08, 1.48, 0.08], [1.3, 1.42, 0.2]] },
+          ],
+        },
+      ],
       safetyChecks: [
         { id: 'post-check', label: '解除后复查', severity: 'stop', bodyRegion: '右手和前臂', instruction: '持续麻木、无力、疼痛或颜色异常需要停止并寻求专业医疗意见。' },
       ],
@@ -122,9 +212,9 @@ const courseData = {
   ],
   reviewers: [],
   reviewStatus: 'prototype-only',
-  modelVersion: 'procedural-v0.1.0',
-  courseVersion: '0.1.0',
-  updatedAt: '2026-08-02T12:00:00.000Z',
+  modelVersion: 'procedural-v0.2.0',
+  courseVersion: '0.2.0',
+  updatedAt: '2026-08-02T13:45:00.000Z',
 } as const;
 
 export const demoCourse = courseSchema.parse(courseData);

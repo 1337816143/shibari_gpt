@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const SPEEDS = [0.25, 0.5, 1, 1.5] as const;
 
-export function usePlayback(stepCount: number) {
-  const [stepIndex, setStepIndex] = useState(0);
+export function usePlayback(stepCount: number, initialStep = 0) {
+  const [stepIndex, setStepIndex] = useState(() => Math.max(0, Math.min(stepCount - 1, initialStep)));
   const [progress, setProgress] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [loopStep, setLoopStep] = useState(false);
@@ -18,6 +18,7 @@ export function usePlayback(stepCount: number) {
     (index: number) => {
       setStepIndex(clampIndex(index));
       setProgress(0);
+      setPlaying(false);
     },
     [clampIndex],
   );
