@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoCourse } from '../src/data/demoCourse';
 import { riggedFigureQaAsset } from '../src/data/modelAssets';
-import { courseSchema, modelAssetSchema } from '../src/schemas/course';
+import { courseSchema, modelAssetSchema, modelTransformSchema } from '../src/schemas/course';
 
 describe('course schema', () => {
   it('accepts the demo course and materializes review records', () => {
@@ -38,12 +38,29 @@ describe('course schema', () => {
     }).success).toBe(false);
   });
 
-  it('rejects zero-scale and excessive model budgets', () => {
-    const invalid = {
-      ...riggedFigureQaAsset,
+  it('rejects zero-scale transforms and excessive model budgets', () => {
+    expect(modelTransformSchema.safeParse({
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 0, 1],
+    }).success).toBe(false);
+
+    expect(modelAssetSchema.safeParse({
+      id: 'oversized-glb',
+      displayName: 'Oversized QA model',
+      kind: 'glb',
+      url: '/oversized.glb',
+      sourceUrl: 'https://example.com/source',
+      licenseUrl: 'https://example.com/license',
+      license: 'Test license',
+      attribution: 'Test attribution',
+      status: 'technical-review',
+      adultPresentation: true,
+      presentation: 'neutral-fully-clothed',
+      allowRemote: false,
+      transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+      timeoutMs: 15000,
       maxBytes: 80 * 1024 * 1024,
-      transform: { ...riggedFigureQaAsset.transform, scale: [1, 0, 1] },
-    };
-    expect(modelAssetSchema.safeParse(invalid).success).toBe(false);
+    }).success).toBe(false);
   });
 });
