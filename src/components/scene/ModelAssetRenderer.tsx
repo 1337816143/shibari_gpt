@@ -27,7 +27,9 @@ class ModelAssetBoundary extends Component<ModelAssetBoundaryProps, ModelAssetBo
     return { failed: true };
   }
 
-  componentDidCatch(_error: Error, _info: ErrorInfo) {
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    void error;
+    void info;
     // The visible fallback is intentional; no unreviewed external asset should break the lesson.
   }
 
