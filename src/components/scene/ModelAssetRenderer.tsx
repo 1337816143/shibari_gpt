@@ -75,7 +75,9 @@ function GlbTrainingModel({ asset, opacity }: { asset: Extract<ModelAsset, { kin
         materials.add(material);
         return material;
       });
-      mesh.material = Array.isArray(mesh.material) ? clonedMaterials : clonedMaterials[0];
+      const firstMaterial = clonedMaterials[0];
+      if (!firstMaterial) return;
+      mesh.material = Array.isArray(mesh.material) ? clonedMaterials : firstMaterial;
     });
 
     return { scene, materials };
