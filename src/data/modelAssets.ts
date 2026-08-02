@@ -13,6 +13,7 @@ export const riggedFigureQaAsset = modelAssetSchema.parse({
   adultPresentation: true,
   presentation: 'neutral-fully-clothed',
   allowRemote: false,
+  sha256: 'd6be85417d3e256861ee733eea6916093a7af7c79c16366181fd8abcaeb38cf5',
   transform: {
     position: [0, -0.55, 0],
     rotation: [0, 0, 0],
