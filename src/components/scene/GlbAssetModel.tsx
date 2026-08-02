@@ -1,6 +1,6 @@
 import { Html, useAnimations, useGLTF } from '@react-three/drei';
 import { useEffect, useMemo, useState } from 'react';
-import { Bone, Box3, Material, Mesh, SkinnedMesh, Vector3 } from 'three';
+import { Bone, Box3, Material, Mesh, Object3D, SkinnedMesh, Vector3 } from 'three';
 import { SkeletonUtils } from 'three-stdlib';
 import type { ModelAsset } from '../../schemas/course';
 
@@ -33,7 +33,7 @@ async function digestSha256(buffer: ArrayBuffer) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function inspectModel(scene: THREE.Object3D): Diagnostics {
+function inspectModel(scene: Object3D): Diagnostics {
   let meshes = 0;
   let skinnedMeshes = 0;
   let bones = 0;
