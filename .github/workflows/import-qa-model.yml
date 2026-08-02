@@ -1,0 +1,59 @@
+name: Import QA model asset
+
+on:
+  pull_request:
+    types: [reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'agent/phase-1-3d-poc'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: import-qa-model
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/phase-1-3d-poc
+      - name: Download and record Khronos RiggedFigure
+        run: |
+          set -euo pipefail
+          target='public/models/rigged-figure-qa'
+          mkdir -p "$target"
+          curl --fail --location --retry 3 \
+            'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/RiggedFigure/glTF-Binary/RiggedFigure.glb' \
+            --output "$target/RiggedFigure.glb"
+          size=$(stat -c%s "$target/RiggedFigure.glb")
+          test "$size" -gt 1024
+          test "$size" -lt 8388608
+          (cd "$target" && sha256sum RiggedFigure.glb > SHA256.txt)
+          cat > "$target/SOURCE.md" <<'EOF'
+          # RiggedFigure technical QA asset
+
+          - Source: KhronosGroup/glTF-Sample-Assets, `Models/RiggedFigure`
+          - Original author: Cesium
+          - Purpose here: GLB, skin, animation, integrity and fallback testing only
+          - Course status: not a production teaching character
+          - License: CC BY 4.0
+          EOF
+          cat > "$target/LICENSE.txt" <<'EOF'
+          This technical QA copy is attributed to © 2017 Cesium and is distributed
+          under Creative Commons Attribution 4.0 International (CC BY 4.0).
+          https://creativecommons.org/licenses/by/4.0/
+          EOF
+      - name: Commit controlled asset
+        run: |
+          set -euo pipefail
+          git add public/models/rigged-figure-qa
+          if git diff --cached --quiet; then
+            echo 'QA model already current'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Import controlled RiggedFigure QA asset'
+          git pull --rebase origin agent/phase-1-3d-poc
+          git push origin HEAD:agent/phase-1-3d-poc
