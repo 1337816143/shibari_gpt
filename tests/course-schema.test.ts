@@ -67,4 +67,57 @@ describe('course schema', () => {
       maxBytes: 80 * 1024 * 1024,
     }).success).toBe(false);
   });
+
+  it('rejects a course whose model id and asset id diverge', () => {
+    expect(courseSchema.safeParse({ ...demoCourse, modelId: 'different-model' }).success).toBe(false);
+  });
+
+  it('rejects approval labels without version-bound independent reviews', () => {
+    expect(courseSchema.safeParse({ ...demoCourse, reviewStatus: 'approved' }).success).toBe(false);
+  });
+
+  it('accepts approval only after model, pose and three required reviews are approved', () => {
+    const reviewedAt = '2026-08-02T16:00:00.000Z';
+    const approved = {
+      ...demoCourse,
+      reviewStatus: 'approved' as const,
+      modelAsset: { ...demoCourse.modelAsset, status: 'approved' as const },
+      pose: { ...demoCourse.pose, sourceStatus: 'approved' as const },
+      reviewers: ['Independent rope reviewer', 'Independent medical reviewer', 'Independent model reviewer'],
+      reviewRecords: [
+        {
+          id: 'rope-v1',
+          role: 'rope-technique' as const,
+          reviewer: 'Independent rope reviewer',
+          status: 'approved' as const,
+          scope: ['pose', 'rope path', 'release sequence'],
+          reviewedVersion: demoCourse.courseVersion,
+          reviewedAt,
+          notes: 'Version-bound rope review completed.',
+        },
+        {
+          id: 'medical-v1',
+          role: 'medical-anatomy' as const,
+          reviewer: 'Independent medical reviewer',
+          status: 'approved' as const,
+          scope: ['contact points', 'stop conditions', 'risk wording'],
+          reviewedVersion: demoCourse.courseVersion,
+          reviewedAt,
+          notes: 'Version-bound medical review completed.',
+        },
+        {
+          id: 'model-v1',
+          role: 'model-technical' as const,
+          reviewer: 'Independent model reviewer',
+          status: 'approved' as const,
+          scope: ['license', 'skeleton', 'weights', 'performance'],
+          reviewedVersion: demoCourse.modelVersion,
+          reviewedAt,
+          notes: 'Version-bound model review completed.',
+        },
+      ],
+    };
+
+    expect(courseSchema.safeParse(approved).success).toBe(true);
+  });
 });
