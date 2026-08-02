@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoCourse } from '../src/data/demoCourse';
-import { courseSchema } from '../src/schemas/course';
+import { riggedFigureQaAsset } from '../src/data/modelAssets';
+import { courseSchema, modelAssetSchema } from '../src/schemas/course';
 
 describe('course schema', () => {
   it('accepts the demo course', () => {
@@ -17,5 +18,20 @@ describe('course schema', () => {
   it('does not publish prototype content or placeholder assets as approved', () => {
     expect(demoCourse.reviewStatus).toBe('prototype-only');
     expect(demoCourse.modelAsset.status).toBe('placeholder');
+  });
+
+  it('accepts a fully attributed GLB candidate for technical loader testing', () => {
+    expect(modelAssetSchema.safeParse(riggedFigureQaAsset).success).toBe(true);
+    expect(riggedFigureQaAsset.status).toBe('technical-review');
+  });
+
+  it('rejects GLB entries without source, license and transform metadata', () => {
+    expect(modelAssetSchema.safeParse({
+      id: 'incomplete-glb',
+      kind: 'glb',
+      license: 'unknown',
+      attribution: 'unknown',
+      status: 'technical-review',
+    }).success).toBe(false);
   });
 });
