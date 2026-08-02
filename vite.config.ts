@@ -7,12 +7,14 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
-    chunkSizeWarningLimit: 900,
+    chunkSizeWarningLimit: 750,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('/node_modules/three/') || id.includes('/node_modules/@react-three/')) return 'three';
           if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) return 'react';
+          if (id.includes('/node_modules/three-stdlib/')) return 'three-stdlib';
+          if (id.includes('/node_modules/@react-three/')) return 'react-three';
+          if (id.includes('/node_modules/three/')) return 'three-core';
           return undefined;
         },
       },
