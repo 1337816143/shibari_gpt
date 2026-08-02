@@ -4,9 +4,9 @@ import { Suspense } from 'react';
 import type { CourseStep, Course } from '../../schemas/course';
 import type { SceneSettings } from '../../types/scene';
 import { CameraRig } from './CameraRig';
+import { ModelAssetRenderer } from './ModelAssetRenderer';
 import { RopePath } from './RopePath';
 import { TeachingOverlays } from './TeachingOverlays';
-import { TrainingMannequin } from './TrainingMannequin';
 
 interface StudioSceneProps {
   course: Course;
@@ -36,7 +36,7 @@ export function StudioScene({ course, step, progress, settings, onQualityFallbac
       <directionalLight position={[-3, 3, -2]} intensity={0.8} />
       <Suspense fallback={<Html center><div className="scene-loader">加载 3D 场景…</div></Html>}>
         <group scale={settings.mirrored ? [-1, 1, 1] : [1, 1, 1]}>
-          {settings.modelVisible && <TrainingMannequin opacity={settings.modelOpacity} />}
+          {settings.modelVisible && <ModelAssetRenderer asset={course.modelAsset} opacity={settings.modelOpacity} />}
         </group>
         <RopePath
           step={step}
