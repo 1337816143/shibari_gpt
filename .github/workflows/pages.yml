@@ -22,10 +22,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          package-manager-cache: false
+          package-manager-cache: npm
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
       - run: npm run build
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
