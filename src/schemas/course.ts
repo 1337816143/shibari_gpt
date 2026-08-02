@@ -89,9 +89,12 @@ export const poseSchema = z.object({
 
 const modelAssetBaseSchema = z.object({
   id: z.string().min(1),
+  displayName: z.string().min(1).default('Unnamed model asset'),
   license: z.string().min(1),
   attribution: z.string().min(1),
   status: z.enum(['placeholder', 'technical-review', 'approved']),
+  adultPresentation: z.literal(true).default(true),
+  presentation: z.literal('neutral-fully-clothed').default('neutral-fully-clothed'),
 });
 
 export const modelTransformSchema = z.object({
@@ -115,12 +118,26 @@ const glbModelAssetSchema = modelAssetBaseSchema.extend({
   allowRemote: z.boolean(),
   transform: modelTransformSchema,
   animationClip: z.string().min(1).optional(),
+  timeoutMs: z.number().int().min(3000).max(60000).default(15000),
+  maxBytes: z.number().int().min(1024).max(50 * 1024 * 1024).default(12 * 1024 * 1024),
 });
 
 export const modelAssetSchema = z.discriminatedUnion('kind', [
   proceduralModelAssetSchema,
   glbModelAssetSchema,
 ]);
+
+export const reviewRecordSchema = z.object({
+  id: z.string().min(1),
+  role: z.enum(['rope-technique', 'medical-anatomy', 'model-technical', 'accessibility', 'editorial']),
+  reviewer: z.string().min(1),
+  status: z.enum(['requested', 'in-review', 'changes-required', 'approved', 'rejected']),
+  scope: z.array(z.string().min(1)).min(1),
+  reviewedVersion: z.string().min(1),
+  reviewedAt: z.string().datetime().optional(),
+  notes: z.string().min(1),
+  evidenceUrl: z.string().url().optional(),
+});
 
 export const courseSchema = z.object({
   id: z.string().min(1),
@@ -142,6 +159,7 @@ export const courseSchema = z.object({
   steps: z.array(courseStepSchema).min(1),
   references: z.array(z.object({ title: z.string(), url: z.string().url(), type: z.string() })),
   reviewers: z.array(z.string()),
+  reviewRecords: z.array(reviewRecordSchema).default([]),
   reviewStatus: z.enum(['prototype-only', 'technical-review', 'safety-review', 'approved']),
   modelVersion: z.string().min(1),
   courseVersion: z.string().min(1),
@@ -151,4 +169,5 @@ export const courseSchema = z.object({
 export type Course = z.infer<typeof courseSchema>;
 export type CourseStep = z.infer<typeof courseStepSchema>;
 export type ModelAsset = z.infer<typeof modelAssetSchema>;
+export type ReviewRecord = z.infer<typeof reviewRecordSchema>;
 export type ViewPresetId = z.infer<typeof viewPresetSchema>;
