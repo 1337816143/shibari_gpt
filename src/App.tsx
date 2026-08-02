@@ -11,6 +11,7 @@ import { useLearningProgress } from './hooks/useLearningProgress';
 import { usePlayback } from './hooks/usePlayback';
 import type { SceneSettings } from './types/scene';
 import './scene-launch.css';
+import './consent-modal.css';
 
 const StudioScene = lazy(() =>
   import('./components/scene/StudioScene').then((module) => ({ default: module.StudioScene })),
@@ -139,10 +140,12 @@ export function App() {
           </div>
 
           {studioActivated && !acknowledged && (
-            <div className="consent-banner" role="alert">
-              <CircleAlert size={22} />
-              <div><strong>开始前确认</strong><p>本课程是工程原型，不是已经通过专业绳师和医疗安全审查的正式教程。禁止承重、吊缚或在无法立即解除的环境中使用。</p></div>
-              <button onClick={() => setAcknowledged(true)}><Check size={17} />我已了解</button>
+            <div className="consent-modal">
+              <div className="consent-banner" role="alertdialog" aria-modal="true" aria-labelledby="consent-title">
+                <CircleAlert size={22} />
+                <div><strong id="consent-title">开始前确认</strong><p>本课程是工程原型，不是已经通过专业绳师和医疗安全审查的正式教程。禁止承重、吊缚或在无法立即解除的环境中使用。</p></div>
+                <button onClick={() => setAcknowledged(true)}><Check size={17} />我已了解</button>
+              </div>
             </div>
           )}
 
@@ -150,7 +153,7 @@ export function App() {
             <div className="viewer-column">
               <div className="viewer-card">
                 <div className="viewer-badge">STEP {String(playback.stepIndex + 1).padStart(2, '0')}</div>
-                {settings.renderMode === 'diagram' ? diagram : studioActivated ? (
+                {settings.renderMode === 'diagram' ? diagram : studioActivated && acknowledged ? (
                   <SceneBoundary
                     fallback={diagram}
                     onError={() => {
@@ -171,6 +174,12 @@ export function App() {
                       />
                     </Suspense>
                   </SceneBoundary>
+                ) : studioActivated ? (
+                  <div className="scene-launch scene-launch--consent">
+                    <ShieldCheck size={34} />
+                    <strong>请先完成安全确认</strong>
+                    <span>确认后才会加载 Three.js 和 3D 教学场景。</span>
+                  </div>
                 ) : (
                   <button className="scene-launch" onClick={activateStudio}>
                     <Layers3 size={34} />
