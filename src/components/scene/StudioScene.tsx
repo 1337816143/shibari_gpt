@@ -1,7 +1,7 @@
 import { AdaptiveDpr, ContactShadows, Html, PerformanceMonitor } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { Suspense } from 'react';
-import type { CourseStep, Course } from '../../schemas/course';
+import type { CourseStep, Course, ModelAsset } from '../../schemas/course';
 import type { SceneSettings } from '../../types/scene';
 import { CameraRig } from './CameraRig';
 import { ModelAssetRenderer } from './ModelAssetRenderer';
@@ -10,6 +10,7 @@ import { TeachingOverlays } from './TeachingOverlays';
 
 interface StudioSceneProps {
   course: Course;
+  modelAsset?: ModelAsset;
   step: CourseStep;
   progress: number;
   settings: SceneSettings;
@@ -20,7 +21,9 @@ function qualityDpr(quality: SceneSettings['quality']) {
   return quality === 'high' ? 2 : quality === 'low' ? 1 : 1.5;
 }
 
-export function StudioScene({ course, step, progress, settings, onQualityFallback }: StudioSceneProps) {
+export function StudioScene({ course, modelAsset, step, progress, settings, onQualityFallback }: StudioSceneProps) {
+  const activeModelAsset = modelAsset ?? course.modelAsset;
+
   return (
     <Canvas
       className="studio-canvas"
@@ -36,7 +39,7 @@ export function StudioScene({ course, step, progress, settings, onQualityFallbac
       <directionalLight position={[-3, 3, -2]} intensity={0.8} />
       <Suspense fallback={<Html center><div className="scene-loader">加载 3D 场景…</div></Html>}>
         <group scale={settings.mirrored ? [-1, 1, 1] : [1, 1, 1]}>
-          {settings.modelVisible && <ModelAssetRenderer asset={course.modelAsset} opacity={settings.modelOpacity} />}
+          {settings.modelVisible && <ModelAssetRenderer asset={activeModelAsset} opacity={settings.modelOpacity} />}
         </group>
         <RopePath
           step={step}
