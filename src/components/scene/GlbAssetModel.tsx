@@ -1,10 +1,13 @@
 import { Html, useAnimations, useGLTF } from '@react-three/drei';
 import { useEffect, useMemo, useState } from 'react';
-import { Bone, Box3, Material, Mesh, Object3D, SkinnedMesh, Vector3 } from 'three';
+import { Box3, Vector3 } from 'three';
+import type { BufferGeometry, Material, Mesh, Object3D, SkinnedMesh } from 'three';
 import { SkeletonUtils } from 'three-stdlib';
 import type { ModelAsset } from '../../schemas/course';
 
 export type GlbAsset = Extract<ModelAsset, { kind: 'glb' }>;
+type RenderMesh = Mesh<BufferGeometry, Material | Material[]>;
+type RenderSkinnedMesh = SkinnedMesh<BufferGeometry, Material | Material[]>;
 
 interface GlbAssetModelProps {
   asset: GlbAsset;
@@ -33,6 +36,15 @@ async function digestSha256(buffer: ArrayBuffer) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function getRenderMesh(object: Object3D): RenderMesh | null {
+  const mesh = object as RenderMesh;
+  return mesh.isMesh ? mesh : null;
+}
+
+function isSkinned(mesh: RenderMesh): mesh is RenderSkinnedMesh {
+  return (mesh as RenderSkinnedMesh).isSkinnedMesh === true;
+}
+
 function inspectModel(scene: Object3D): Diagnostics {
   let meshes = 0;
   let skinnedMeshes = 0;
@@ -41,17 +53,18 @@ function inspectModel(scene: Object3D): Diagnostics {
   const materials = new Set<Material>();
 
   scene.traverse((object) => {
-    if (object instanceof Bone) bones += 1;
-    if (!(object instanceof Mesh)) return;
+    if (object.type === 'Bone') bones += 1;
+    const mesh = getRenderMesh(object);
+    if (!mesh) return;
 
     meshes += 1;
-    if (object instanceof SkinnedMesh) skinnedMeshes += 1;
-    const position = object.geometry.getAttribute('position');
-    triangles += object.geometry.index
-      ? Math.floor(object.geometry.index.count / 3)
+    if (isSkinned(mesh)) skinnedMeshes += 1;
+    const position = mesh.geometry.getAttribute('position');
+    triangles += mesh.geometry.index
+      ? Math.floor(mesh.geometry.index.count / 3)
       : Math.floor((position?.count ?? 0) / 3);
 
-    const meshMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    const meshMaterials: Material[] = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     meshMaterials.forEach((material) => materials.add(material));
   });
 
@@ -73,12 +86,13 @@ function LoadedGlb({ asset, opacity, blobUrl, byteLength }: GlbAssetModelProps &
     const materials = new Set<Material>();
 
     scene.traverse((object) => {
-      if (!(object instanceof Mesh)) return;
-      object.castShadow = true;
-      object.receiveShadow = true;
+      const mesh = getRenderMesh(object);
+      if (!mesh) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
 
-      const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material];
-      const clonedMaterials = sourceMaterials.map((source) => {
+      const sourceMaterials: Material[] = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const clonedMaterials: Material[] = sourceMaterials.map((source) => {
         const material = source.clone();
         material.opacity = Math.min(material.opacity, opacity);
         material.transparent = material.transparent || opacity < 1;
@@ -87,7 +101,7 @@ function LoadedGlb({ asset, opacity, blobUrl, byteLength }: GlbAssetModelProps &
         return material;
       });
       const firstMaterial = clonedMaterials[0];
-      if (firstMaterial) object.material = Array.isArray(object.material) ? clonedMaterials : firstMaterial;
+      if (firstMaterial) mesh.material = Array.isArray(mesh.material) ? clonedMaterials : firstMaterial;
     });
 
     scene.position.set(...asset.transform.position);
@@ -104,16 +118,22 @@ function LoadedGlb({ asset, opacity, blobUrl, byteLength }: GlbAssetModelProps &
     if (!asset.animationClip) return undefined;
     const action = actions[asset.animationClip];
     action?.reset().play();
-    return () => action?.stop();
+    return () => {
+      action?.stop();
+    };
   }, [actions, asset.animationClip]);
 
   useEffect(
-    () => () => prepared.materials.forEach((material) => material.dispose()),
+    () => () => {
+      prepared.materials.forEach((material) => material.dispose());
+    },
     [prepared.materials],
   );
 
   useEffect(
-    () => () => useGLTF.clear(blobUrl),
+    () => () => {
+      useGLTF.clear(blobUrl);
+    },
     [blobUrl],
   );
 
