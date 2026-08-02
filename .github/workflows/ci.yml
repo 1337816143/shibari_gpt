@@ -37,3 +37,71 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
+
+  generate-mpfb-candidate:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'agent/phase-1-3d-poc' &&
+      github.event.pull_request.head.ref == 'agent/mpfb-candidate'
+    needs: validate
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BLENDER_VERSION: '4.5.12'
+      BLENDER_HOME: ${{ runner.temp }}/blender-home
+      OUTPUT_DIR: ${{ runner.temp }}/mpfb-candidate
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Generate reproducible technical-review candidate
+        run: bash tools/blender/run_candidate_pipeline.sh
+
+      - name: Upload technical-review candidate
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpfb-adult-female-candidate
+          path: ${{ env.OUTPUT_DIR }}
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish result or diagnostics to output branch
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUTPUT_DIR"
+          python - <<'PY'
+          import json, os, pathlib
+          output = pathlib.Path(os.environ['OUTPUT_DIR'])
+          metadata = {
+              'status': os.environ['JOB_STATUS'],
+              'runId': os.environ['RUN_ID'],
+              'sourceSha': os.environ['SOURCE_SHA'],
+              'blenderVersion': os.environ['BLENDER_VERSION'],
+          }
+          (output / 'workflow-status.json').write_text(json.dumps(metadata, indent=2), encoding='utf-8')
+          PY
+          git fetch origin agent/mpfb-output
+          git switch agent/mpfb-output
+          target='candidate-output/mpfb-adult-female'
+          rm -rf "$target"
+          mkdir -p "$target"
+          find "$OUTPUT_DIR" -maxdepth 1 -type f \
+            \( -name '*.json' -o -name '*.md' -o -name '*.txt' -o -name '*.log' -o -name '*.png' -o -name '*.glb' \) \
+            -exec cp {} "$target"/ \;
+          git add "$target"
+          if git diff --cached --quiet; then
+            echo 'Candidate output branch is already current'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Record MPFB candidate workflow ${JOB_STATUS}"
+          git pull --rebase origin agent/mpfb-output
+          git push origin HEAD:agent/mpfb-output
