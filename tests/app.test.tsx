@@ -12,9 +12,7 @@ describe('App', () => {
 
   it('loads the interactive scene only after acknowledgement', async () => {
     render(<App />);
-    expect(screen.getByRole('heading', { name: /只发布完成审核的课程/ })).toBeInTheDocument();
-    expect(screen.getAllByRole('heading', { name: /单柱基础/ }).length).toBeGreaterThan(0);
-    expect(screen.getByText(/第三阶段 PoC/)).toBeInTheDocument();
+    expect(screen.getByText(/第四阶段 PoC/)).toBeInTheDocument();
     expect(screen.queryByTestId('scene')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('link', { name: '进入 3D 练习室' }));
@@ -25,11 +23,21 @@ describe('App', () => {
     expect(await screen.findByTestId('scene')).toBeInTheDocument();
   });
 
-  it('stores course favorites and offers the diagram fallback', () => {
+  it('stores favorites and offers the diagram fallback', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: '收藏课程' }));
     expect(screen.getByRole('button', { name: '取消收藏课程' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '简化图' }));
     expect(screen.getByRole('img', { name: /简化二维绳路图/ })).toBeInTheDocument();
+  });
+
+  it('exposes model provenance and a clearly labelled QA asset switch', () => {
+    render(<App />);
+    expect(screen.getByRole('heading', { name: /看得见资产状态/ })).toBeInTheDocument();
+    expect(screen.getByText(/尚无独立审核记录/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /加载技术 QA 模型/ }));
+    expect(screen.getByText('Khronos RiggedFigure · 技术 QA')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /返回课程占位模型/ })).toBeInTheDocument();
   });
 });
