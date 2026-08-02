@@ -52,6 +52,9 @@ export function App() {
     [course.steps.length, playback.progress, playback.stepIndex],
   );
   const masteryCompletion = Math.round((learning.completedStepIds.length / course.steps.length) * 100);
+  const modelAssetLabel = course.modelAsset.kind === 'glb'
+    ? `GLB · ${course.modelAsset.status}`
+    : '程序化占位模型 · 待审核';
 
   useEffect(() => {
     setLastStepIndex(playback.stepIndex);
@@ -97,7 +100,7 @@ export function App() {
           <a href="#library">课程库</a><a href="#course" onClick={activateStudio}>练习室</a><a href="#path">学习路径</a><a href="#safety">安全入门</a><a href="#research">研究与审核</a>
         </nav>
         <button className="menu-button" onClick={() => setMenuOpen((value) => !value)} aria-label="切换菜单">{menuOpen ? <X /> : <Menu />}</button>
-        <div className="status-chip"><span />第二阶段 PoC · 未经课程审核</div>
+        <div className="status-chip"><span />第三阶段 PoC · 未经课程审核</div>
       </header>
 
       <main id="top">
@@ -105,9 +108,9 @@ export function App() {
           <div className="hero__copy">
             <span className="kicker"><Sparkles size={16} />可旋转人物 · 分步绳路 · 步骤安全提示</span>
             <h1>把每一段绳路，<br /><em>看清楚再练习。</em></h1>
-            <p>面向成年学习者的 3D 互动教学原型。现在已经加入操作手、绳头方向、接触点、错误对比、学习记录与低性能降级；仍不替代线下专业指导。</p>
+            <p>面向成年学习者的 3D 互动教学原型。现在已经加入 GLB 资产契约、安全回退、操作手、绳头方向、接触点、错误对比和学习记录；仍不替代线下专业指导。</p>
             <div className="hero__actions"><a className="primary-button" href="#course" onClick={activateStudio}>进入 3D 练习室</a><a className="secondary-button" href="#library">浏览课程库</a></div>
-            <div className="hero__metrics"><span><strong>360°</strong>自由视角</span><span><strong>{course.steps.length}</strong>独立步骤</span><span><strong>2D/3D</strong>双模式</span></div>
+            <div className="hero__metrics"><span><strong>360°</strong>自由视角</span><span><strong>{course.steps.length}</strong>独立步骤</span><span><strong>GLB/2D</strong>安全回退</span></div>
           </div>
           <div className="hero__visual" aria-hidden="true">
             <div className="orb orb--one" /><div className="orb orb--two" />
@@ -130,7 +133,7 @@ export function App() {
             <article><span>预计时长</span><strong><Clock3 size={17} />{course.estimatedMinutes} 分钟</strong></article>
             <article><span>难度与风险</span><strong>入门 · 低风险 · 非承重</strong></article>
             <article><span>学习进度</span><strong>{learning.completedStepIds.length}/{course.steps.length} 步</strong><div className="mastery-meter"><i style={{ width: `${masteryCompletion}%` }} /></div></article>
-            <article><span>资产状态</span><strong>程序化占位模型 · 待审核</strong></article>
+            <article><span>资产状态</span><strong>{modelAssetLabel}</strong></article>
           </div>
 
           <div className="course-brief-grid">
@@ -243,14 +246,14 @@ export function App() {
         <section id="research" className="content-section research-section">
           <div className="section-heading"><div><span className="eyebrow">研究与资产状态</span><h2>不伪装 img2threejs 的能力边界</h2></div></div>
           <div className="research-grid">
-            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查 Schema</li><li>操作手、绳头方向、接触点与错误对比</li><li>学习记录、收藏、课程搜索筛选</li><li>3D 按需加载和 2D 降级模式</li></ul></article>
+            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查 Schema</li><li>GLB 资产契约、骨骼安全克隆和模型级失败回退</li><li>操作手、绳头方向、接触点与错误对比</li><li>学习记录、收藏、课程搜索筛选</li><li>锁定依赖、3D 按需加载和 2D 降级模式</li></ul></article>
             <article><h3>仍需人工完成</h3><ul><li>Image 2 多视图统一人物参考图</li><li>高质量拓扑、骨骼绑定与权重</li><li>专业绳师逐步校验绳路</li><li>医学/人体结构安全审核</li><li>GLB 压缩、LOD、纹理压缩和真机性能测试</li></ul></article>
             <article className="warning-card"><h3>img2threejs 1.4.3 评估</h3><p>当前工具主要从单张参考图生成程序化 TypeScript/Three.js 模型。人物重建、绑定就绪拓扑、自动权重、自动绑定和多视图重建仍分布在后续路线图中，因此不能宣称已经产出可直接用于生产的写实带骨骼人物 GLB。</p></article>
           </div>
         </section>
       </main>
 
-      <footer><span>Shibari Studio Phase 2 PoC</span><span>成年人 · 安全优先 · 未审核课程不得发布</span></footer>
+      <footer><span>Shibari Studio Phase 3 PoC</span><span>成年人 · 安全优先 · 未审核课程不得发布</span></footer>
     </div>
   );
 }
