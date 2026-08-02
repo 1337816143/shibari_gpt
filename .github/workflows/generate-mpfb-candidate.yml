@@ -2,11 +2,9 @@ name: Generate MPFB character candidate
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
+    types: [opened, reopened, synchronize]
     branches: ['agent/phase-1-3d-poc']
-    paths:
-      - '.github/workflows/generate-mpfb-candidate.yml'
-      - 'tools/blender/**'
 
 permissions:
   contents: write
@@ -17,6 +15,7 @@ concurrency:
 
 jobs:
   generate:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'agent/mpfb-candidate'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
