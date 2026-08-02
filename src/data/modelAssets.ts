@@ -1,20 +1,25 @@
 import { modelAssetSchema } from '../schemas/course';
 
 export const riggedFigureQaAsset = modelAssetSchema.parse({
-  id: 'khronos-rigged-figure-qa',
+  id: 'khronos-rigged-figure-qa-v1',
+  displayName: 'Khronos RiggedFigure · 技术 QA',
   kind: 'glb',
-  url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/RiggedFigure/glTF-Binary/RiggedFigure.glb',
+  url: `${import.meta.env.BASE_URL}models/rigged-figure-qa/RiggedFigure.glb`,
   sourceUrl: 'https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/RiggedFigure',
   licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
   license: 'CC BY 4.0',
-  attribution: '© 2017 Cesium; Khronos glTF Sample Assets',
+  attribution: '© 2017 Cesium; distributed by Khronos glTF Sample Assets',
   status: 'technical-review',
-  allowRemote: true,
+  adultPresentation: true,
+  presentation: 'neutral-fully-clothed',
+  allowRemote: false,
   transform: {
     position: [0, -0.55, 0],
     rotation: [0, 0, 0],
     scale: [1, 1, 1],
   },
+  timeoutMs: 12000,
+  maxBytes: 8 * 1024 * 1024,
 });
 
 export const modelAssetCandidates = [riggedFigureQaAsset] as const;
