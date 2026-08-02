@@ -139,7 +139,7 @@ export const reviewRecordSchema = z.object({
   evidenceUrl: z.string().url().optional(),
 });
 
-export const courseSchema = z.object({
+const courseObjectSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   aliases: z.array(z.string()),
@@ -164,6 +164,62 @@ export const courseSchema = z.object({
   modelVersion: z.string().min(1),
   courseVersion: z.string().min(1),
   updatedAt: z.string().datetime(),
+});
+
+export const courseSchema = courseObjectSchema.superRefine((course, context) => {
+  if (course.modelId !== course.modelAsset.id) {
+    context.addIssue({
+      code: 'custom',
+      path: ['modelId'],
+      message: 'modelId must match modelAsset.id',
+    });
+  }
+
+  if (course.reviewStatus !== 'approved') return;
+
+  if (course.modelAsset.status !== 'approved') {
+    context.addIssue({
+      code: 'custom',
+      path: ['modelAsset', 'status'],
+      message: 'An approved course requires an approved model asset',
+    });
+  }
+  if (course.pose.sourceStatus !== 'approved') {
+    context.addIssue({
+      code: 'custom',
+      path: ['pose', 'sourceStatus'],
+      message: 'An approved course requires an approved pose',
+    });
+  }
+  if (course.reviewers.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['reviewers'],
+      message: 'An approved course must name independent reviewers',
+    });
+  }
+
+  const requiredReviews = [
+    { role: 'rope-technique', version: course.courseVersion },
+    { role: 'medical-anatomy', version: course.courseVersion },
+    { role: 'model-technical', version: course.modelVersion },
+  ] as const;
+
+  for (const requirement of requiredReviews) {
+    const accepted = course.reviewRecords.some(
+      (record) => record.role === requirement.role &&
+        record.status === 'approved' &&
+        record.reviewedVersion === requirement.version &&
+        Boolean(record.reviewedAt),
+    );
+    if (!accepted) {
+      context.addIssue({
+        code: 'custom',
+        path: ['reviewRecords'],
+        message: `Missing approved ${requirement.role} review for version ${requirement.version}`,
+      });
+    }
+  }
 });
 
 export type Course = z.infer<typeof courseSchema>;
