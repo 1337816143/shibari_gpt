@@ -1,10 +1,10 @@
-import { Html, useGLTF } from '@react-three/drei';
-import { Component, useEffect, useMemo, type ErrorInfo, type ReactNode } from 'react';
-import type { Material, Mesh } from 'three';
-import { SkeletonUtils } from 'three-stdlib';
+import { Html } from '@react-three/drei';
+import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import type { ModelAsset } from '../../schemas/course';
 import { TrainingMannequin } from './TrainingMannequin';
 import './model-asset.css';
+
+const GlbAssetModel = lazy(() => import('./GlbAssetModel'));
 
 interface ModelAssetRendererProps {
   asset: ModelAsset;
@@ -56,53 +56,6 @@ function isRemoteUrl(url: string) {
   return /^https?:\/\//i.test(url);
 }
 
-function GlbTrainingModel({ asset, opacity }: { asset: Extract<ModelAsset, { kind: 'glb' }>; opacity: number }) {
-  const gltf = useGLTF(asset.url);
-  const prepared = useMemo(() => {
-    const scene = SkeletonUtils.clone(gltf.scene);
-    const materials = new Set<Material>();
-
-    scene.traverse((object) => {
-      const mesh = object as Mesh;
-      if (!mesh.isMesh) return;
-
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      const clonedMaterials = sourceMaterials.map((source) => {
-        const material = source.clone();
-        material.opacity = Math.min(material.opacity, opacity);
-        material.transparent = material.transparent || opacity < 1;
-        material.depthWrite = opacity >= 1;
-        materials.add(material);
-        return material;
-      });
-      const firstMaterial = clonedMaterials[0];
-      if (!firstMaterial) return;
-      mesh.material = Array.isArray(mesh.material) ? clonedMaterials : firstMaterial;
-    });
-
-    return { scene, materials };
-  }, [gltf.scene, opacity]);
-
-  useEffect(
-    () => () => {
-      prepared.materials.forEach((material) => material.dispose());
-    },
-    [prepared],
-  );
-
-  return (
-    <primitive
-      object={prepared.scene}
-      position={asset.transform.position}
-      rotation={asset.transform.rotation}
-      scale={asset.transform.scale}
-      dispose={null}
-    />
-  );
-}
-
 export function ModelAssetRenderer({ asset, opacity }: ModelAssetRendererProps) {
   if (asset.kind === 'procedural') {
     return <TrainingMannequin opacity={opacity} />;
@@ -114,10 +67,12 @@ export function ModelAssetRenderer({ asset, opacity }: ModelAssetRendererProps) 
 
   return (
     <ModelAssetBoundary
-      key={asset.id}
-      fallback={<ModelFallback opacity={opacity} reason="GLB 加载或解析失败，教学绳路仍可继续查看。" />}
+      key={`${asset.id}:${asset.sha256 ?? 'unverified'}`}
+      fallback={<ModelFallback opacity={opacity} reason="GLB 下载、完整性校验或解析失败，教学绳路仍可继续查看。" />}
     >
-      <GlbTrainingModel asset={asset} opacity={opacity} />
+      <Suspense fallback={<Html center><div className="scene-loader">按需加载 GLB 模块…</div></Html>}>
+        <GlbAssetModel asset={asset} opacity={opacity} />
+      </Suspense>
     </ModelAssetBoundary>
   );
 }
