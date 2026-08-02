@@ -31,7 +31,7 @@
 
 .asset-transparency__grid {
   display: grid;
-  grid-template-columns: 1.35fr 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -44,6 +44,10 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   background: rgba(20, 27, 28, 0.72);
+}
+
+.asset-card--primary {
+  grid-row: span 2;
 }
 
 .asset-card > svg {
@@ -118,7 +122,8 @@
   line-height: 1.45;
 }
 
-.review-records {
+.review-records,
+.release-gates {
   display: grid;
   gap: 0.7rem;
   margin: 0;
@@ -138,6 +143,36 @@
   text-transform: none;
 }
 
+.release-gates li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  color: #9ba9a5;
+}
+
+.release-gates li svg {
+  flex: 0 0 auto;
+  color: #d0a85d;
+}
+
+.release-gates li span {
+  color: inherit;
+  font-size: 0.76rem;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.release-gates li.is-passed {
+  color: #a9e58e;
+}
+
+.release-gates li.is-passed svg {
+  color: #8fd36f;
+}
+
 .asset-card button {
   display: inline-flex;
   align-items: center;
@@ -154,6 +189,7 @@
 
 @media (max-width: 900px) {
   .asset-transparency__grid { grid-template-columns: 1fr; }
+  .asset-card--primary { grid-row: auto; }
 }
 
 @media (max-width: 640px) {
