@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 
 vi.mock('../src/components/scene/StudioScene', () => ({
@@ -8,6 +8,7 @@ vi.mock('../src/components/scene/StudioScene', () => ({
 
 describe('App', () => {
   beforeEach(() => window.localStorage.clear());
+  afterEach(() => cleanup());
 
   it('renders the course library and loads the 3D studio on demand', async () => {
     render(<App />);
