@@ -42,7 +42,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.base.ref == 'agent/phase-1-3d-poc' &&
-      github.event.pull_request.head.ref == 'agent/mpfb-candidate'
+      startsWith(github.event.pull_request.head.ref, 'agent/mpfb-trigger-')
     needs: validate
     permissions:
       contents: write
