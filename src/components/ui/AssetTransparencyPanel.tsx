@@ -1,5 +1,5 @@
-import { BadgeCheck, Box, ExternalLink, FileKey2, FlaskConical, ShieldAlert } from 'lucide-react';
-import type { Course, ModelAsset } from '../../schemas/course';
+import { BadgeCheck, Box, CheckCircle2, CircleDashed, ExternalLink, FileKey2, FlaskConical, ShieldAlert } from 'lucide-react';
+import type { Course, ModelAsset, ReviewRecord } from '../../schemas/course';
 import './asset-transparency.css';
 
 interface AssetTransparencyPanelProps {
@@ -15,8 +15,26 @@ const statusLabels: Record<ModelAsset['status'], string> = {
   approved: '资产已验收',
 };
 
+function hasCurrentApproval(course: Course, role: ReviewRecord['role'], version: string) {
+  return course.reviewRecords.some(
+    (record) => record.role === role &&
+      record.status === 'approved' &&
+      record.reviewedVersion === version &&
+      Boolean(record.reviewedAt),
+  );
+}
+
 export function AssetTransparencyPanel({ course, activeAsset, usingQaAsset, onToggleQaAsset }: AssetTransparencyPanelProps) {
   const reviewRecords = course.reviewRecords;
+  const releaseGates = [
+    { label: '课程人物资产已验收', passed: course.modelAsset.status === 'approved' },
+    { label: '课程姿势已验收', passed: course.pose.sourceStatus === 'approved' },
+    { label: `绳艺审核匹配课程 v${course.courseVersion}`, passed: hasCurrentApproval(course, 'rope-technique', course.courseVersion) },
+    { label: `医学审核匹配课程 v${course.courseVersion}`, passed: hasCurrentApproval(course, 'medical-anatomy', course.courseVersion) },
+    { label: `模型审核匹配模型 v${course.modelVersion}`, passed: hasCurrentApproval(course, 'model-technical', course.modelVersion) },
+    { label: '课程状态已批准', passed: course.reviewStatus === 'approved' },
+  ];
+  const passedGateCount = releaseGates.filter((gate) => gate.passed).length;
 
   return (
     <section className="asset-transparency" aria-labelledby="asset-transparency-title">
@@ -41,6 +59,7 @@ export function AssetTransparencyPanel({ course, activeAsset, usingQaAsset, onTo
             <div><dt>许可证</dt><dd>{activeAsset.license}</dd></div>
             <div><dt>成年人声明</dt><dd>{activeAsset.adultPresentation ? '是' : '否'}</dd></div>
             <div><dt>呈现规范</dt><dd>中性、完整着装</dd></div>
+            <div><dt>语义骨骼映射</dt><dd>{Object.keys(activeAsset.boneMap).length} 项</dd></div>
             {activeAsset.kind === 'glb' && (
               <>
                 <div><dt>加载预算</dt><dd>{Math.round(activeAsset.maxBytes / 1024 / 1024)} MB</dd></div>
@@ -77,6 +96,23 @@ export function AssetTransparencyPanel({ course, activeAsset, usingQaAsset, onTo
           ) : (
             <div className="empty-review"><ShieldAlert size={18} />专业绳师与医学/人体结构审核仍未完成。</div>
           )}
+        </article>
+
+        <article className="asset-card asset-card--gates">
+          <ShieldAlert size={22} />
+          <div>
+            <span>正式发布门禁</span>
+            <h3>{passedGateCount}/{releaseGates.length} 项通过</h3>
+            <p>门禁由课程与审核数据实时计算，不能通过修改页面文案绕过。</p>
+          </div>
+          <ul className="release-gates">
+            {releaseGates.map((gate) => (
+              <li className={gate.passed ? 'is-passed' : ''} key={gate.label}>
+                {gate.passed ? <CheckCircle2 size={16} /> : <CircleDashed size={16} />}
+                <span>{gate.label}</span>
+              </li>
+            ))}
+          </ul>
         </article>
 
         <article className="asset-card asset-card--lab">
