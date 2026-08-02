@@ -32,7 +32,8 @@ jobs:
           mkdir -p "$BLENDER_HOME" "$OUTPUT_DIR"
           curl --fail --location --retry 3 \
             "https://download.blender.org/release/Blender4.5/blender-${BLENDER_VERSION}-linux-x64.tar.xz" \
-            --output "$RUNNER_TEMP/blender.tar.xz"
+            --output "$RUNNER_TEMP/blender.tar.xz" \
+            2>&1 | tee "$OUTPUT_DIR/download-blender.log"
           tar -xf "$RUNNER_TEMP/blender.tar.xz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/blender-${BLENDER_VERSION}-linux-x64" >> "$GITHUB_PATH"
 
@@ -41,15 +42,18 @@ jobs:
           HOME: ${{ env.BLENDER_HOME }}
         run: |
           set -euo pipefail
-          blender --online-mode --command extension install -s -e mpfb
-          blender --command extension list | tee "$OUTPUT_DIR/extensions.txt"
+          blender --online-mode --command extension install -s -e mpfb \
+            2>&1 | tee "$OUTPUT_DIR/install-extension.log"
+          blender --command extension list \
+            2>&1 | tee "$OUTPUT_DIR/extensions.txt"
 
       - name: Download CC0 MakeHuman system assets
         run: |
           set -euo pipefail
           curl --fail --location --retry 3 \
             'https://files2.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip' \
-            --output "$RUNNER_TEMP/makehuman-system-assets.zip"
+            --output "$RUNNER_TEMP/makehuman-system-assets.zip" \
+            2>&1 | tee "$OUTPUT_DIR/download-assets.log"
           test "$(stat -c%s "$RUNNER_TEMP/makehuman-system-assets.zip")" -gt 100000000
 
       - name: Install MPFB assets
@@ -60,7 +64,7 @@ jobs:
           blender -b --python-exit-code 1 \
             --python tools/blender/install_mpfb_assets.py \
             -- "$RUNNER_TEMP/makehuman-system-assets.zip" \
-            | tee "$OUTPUT_DIR/install-assets.log"
+            2>&1 | tee "$OUTPUT_DIR/install-assets.log"
 
       - name: Generate GLB and four-view previews
         env:
@@ -70,7 +74,7 @@ jobs:
           blender -b --python-exit-code 1 \
             --python tools/blender/generate_mpfb_candidate.py \
             -- "$OUTPUT_DIR" \
-            | tee "$OUTPUT_DIR/generation.log"
+            2>&1 | tee "$OUTPUT_DIR/generation.log"
           test -s "$OUTPUT_DIR/shibari-adult-female-candidate.glb"
           test -s "$OUTPUT_DIR/preview-front.png"
           test -s "$OUTPUT_DIR/preview-back.png"
@@ -84,7 +88,7 @@ jobs:
           size=$(stat -c%s "$OUTPUT_DIR/shibari-adult-female-candidate.glb")
           echo "candidate bytes: $size"
           test "$size" -lt 52428800
-          python - <<'PY'
+          python - <<'PY' | tee "$OUTPUT_DIR/budget-check.log"
           import json, os, pathlib
           output = pathlib.Path(os.environ['OUTPUT_DIR'])
           report = json.loads((output / 'candidate-report.json').read_text())
@@ -104,21 +108,34 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Publish to isolated review branch
+      - name: Publish result or diagnostics to isolated review branch
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+          mkdir -p "$OUTPUT_DIR"
+          python - <<'PY'
+          import json, os, pathlib
+          output = pathlib.Path(os.environ['OUTPUT_DIR'])
+          metadata = {
+              'status': os.environ['JOB_STATUS'],
+              'runId': os.environ['RUN_ID'],
+              'sourceSha': os.environ['SOURCE_SHA'],
+              'blenderVersion': os.environ['BLENDER_VERSION'],
+          }
+          (output / 'workflow-status.json').write_text(json.dumps(metadata, indent=2), encoding='utf-8')
+          PY
           git fetch origin agent/mpfb-candidate
           git switch agent/mpfb-candidate
           target='candidate-output/mpfb-adult-female'
           rm -rf "$target"
           mkdir -p "$target"
-          cp "$OUTPUT_DIR"/shibari-adult-female-candidate.glb "$target"/
-          cp "$OUTPUT_DIR"/preview-*.png "$target"/
-          cp "$OUTPUT_DIR"/candidate-report.json "$target"/
-          cp "$OUTPUT_DIR"/SOURCE.md "$target"/
-          cp "$OUTPUT_DIR"/LICENSE.txt "$target"/
-          cp "$OUTPUT_DIR"/SHA256.txt "$target"/
-          cp "$OUTPUT_DIR"/generation.log "$target"/
+          find "$OUTPUT_DIR" -maxdepth 1 -type f \
+            \( -name '*.json' -o -name '*.md' -o -name '*.txt' -o -name '*.log' -o -name '*.png' -o -name '*.glb' \) \
+            -exec cp {} "$target"/ \;
           git add "$target"
           if git diff --cached --quiet; then
             echo 'Candidate review branch is already current'
@@ -126,6 +143,6 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Generate MPFB adult female candidate'
+          git commit -m "Record MPFB candidate workflow ${JOB_STATUS}"
           git pull --rebase origin agent/mpfb-candidate
           git push origin HEAD:agent/mpfb-candidate
