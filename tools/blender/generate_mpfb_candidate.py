@@ -13,6 +13,9 @@ import bpy
 from mathutils import Vector
 
 
+MAX_TEXTURE_DIMENSION = 1024
+
+
 def dynamic_import(package_suffix: str, key: str):
     for module_name in list(sys.modules):
         if module_name.endswith(package_suffix):
@@ -65,6 +68,31 @@ def world_bounds(objects: list[bpy.types.Object]) -> tuple[Vector, Vector]:
 
 def point_camera(camera: bpy.types.Object, target: Vector) -> None:
     camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
+
+
+def optimize_textures(max_dimension: int = MAX_TEXTURE_DIMENSION) -> list[dict[str, object]]:
+    report: list[dict[str, object]] = []
+    for image in bpy.data.images:
+        if image.name in {"Render Result", "Viewer Node"} or not image.has_data:
+            continue
+        width, height = int(image.size[0]), int(image.size[1])
+        if width <= 0 or height <= 0:
+            continue
+        target_width, target_height = width, height
+        if max(width, height) > max_dimension:
+            scale = max_dimension / max(width, height)
+            target_width = max(1, round(width * scale))
+            target_height = max(1, round(height * scale))
+            image.scale(target_width, target_height)
+        report.append(
+            {
+                "name": image.name,
+                "original": [width, height],
+                "exported": [target_width, target_height],
+                "source": image.source,
+            }
+        )
+    return report
 
 
 def setup_render_scene(objects: list[bpy.types.Object], output_dir: Path) -> None:
@@ -135,7 +163,13 @@ def select_hierarchy(objects: list[bpy.types.Object]) -> None:
     bpy.context.view_layer.objects.active = objects[0]
 
 
-def write_report(output_dir: Path, glb_path: Path, objects: list[bpy.types.Object], assets: list[dict[str, str]]) -> None:
+def write_report(
+    output_dir: Path,
+    glb_path: Path,
+    objects: list[bpy.types.Object],
+    assets: list[dict[str, str]],
+    texture_report: list[dict[str, object]],
+) -> None:
     meshes = [obj for obj in objects if obj.type == "MESH"]
     armatures = [obj for obj in objects if obj.type == "ARMATURE"]
     report = {
@@ -152,6 +186,10 @@ def write_report(output_dir: Path, glb_path: Path, objects: list[bpy.types.Objec
             "proportions": 0.44,
         },
         "assets": assets,
+        "texturePolicy": {
+            "maxDimension": MAX_TEXTURE_DIMENSION,
+            "images": texture_report,
+        },
         "objectCount": len(objects),
         "meshCount": len(meshes),
         "armatureCount": len(armatures),
@@ -216,7 +254,7 @@ def main() -> None:
         ("Eyelashes", "eyelashes", ["eyelashes01.mhclo"]),
         ("Teeth", "teeth", ["teeth_base.mhclo"]),
         ("Hair", "hair", ["ponytail01.mhclo", "short02.mhclo", "long01.mhclo"]),
-        ("Clothes", "clothes", ["female_sportsuit01.mhclo", "female_casualsuit01.mhclo"]),
+        ("Clothes", "clothes", ["female_casualsuit01.mhclo"]),
     ]
     added_assets: list[dict[str, str]] = [{"type": "Skin", "file": skin_name or "", "path": skin_path or ""}]
     for asset_type, subdir, candidates in requested_assets:
@@ -233,6 +271,8 @@ def main() -> None:
     if shoe_path:
         human_service.add_mhclo_asset(shoe_path, basemesh, asset_type="Clothes", material_type="GAMEENGINE")
         added_assets.append({"type": "Shoes", "file": shoe_name or "", "path": shoe_path})
+
+    texture_report = optimize_textures()
 
     export_root = export_service.create_character_copy(basemesh, name_suffix="_export")
     export_basemesh = object_service.find_object_of_type_amongst_nearest_relatives(export_root, "Basemesh")
@@ -261,11 +301,13 @@ def main() -> None:
     if not glb_path.is_file() or glb_path.stat().st_size < 1024:
         raise RuntimeError("GLB export did not produce a valid file")
 
-    write_report(output_dir, glb_path, export_objects, added_assets)
+    write_report(output_dir, glb_path, export_objects, added_assets, texture_report)
     (output_dir / "SOURCE.md").write_text(
         "# MPFB adult female candidate\n\n"
         "Generated with Blender 4.5 LTS and MPFB from the MakeHuman system-assets pack.\n"
         "The generated model and MakeHuman core/system assets are CC0.\n"
+        "Clothing asset: female_casualsuit01 (short-sleeve shirt and long trousers).\n"
+        "Textures larger than 1024 pixels are downscaled before GLB export.\n"
         "Status: technical candidate only; not a reviewed teaching model.\n",
         encoding="utf-8",
     )
