@@ -76,9 +76,14 @@ for view in front back left right; do
 done
 (cd "$OUTPUT_DIR" && sha256sum shibari-adult-female-candidate.glb > SHA256.txt)
 
+python tools/blender/audit_glb_candidate.py \
+  "$OUTPUT_DIR/shibari-adult-female-candidate.glb" \
+  "$OUTPUT_DIR/glb-audit.json" \
+  | tee "$OUTPUT_DIR/glb-audit.log"
+
 size=$(stat -c%s "$OUTPUT_DIR/shibari-adult-female-candidate.glb")
 echo "candidate bytes: $size" | tee "$OUTPUT_DIR/budget-check.log"
-test "$size" -lt 52428800
+test "$size" -lt 12582912
 
 python - <<'PY' | tee -a "$OUTPUT_DIR/budget-check.log"
 import json
@@ -87,10 +92,16 @@ import pathlib
 
 output = pathlib.Path(os.environ["OUTPUT_DIR"])
 report = json.loads((output / "candidate-report.json").read_text(encoding="utf-8"))
+audit = json.loads((output / "glb-audit.json").read_text(encoding="utf-8"))
 assert report["armatureCount"] >= 1, report
-assert report["boneCount"] >= 10, report
-assert report["meshCount"] >= 2, report
+assert report["boneCount"] >= 40, report
+assert report["meshCount"] >= 6, report
 assert report["adultPresentation"] is True, report
 assert report["presentation"] == "neutral-fully-clothed", report
-print(json.dumps(report, indent=2, ensure_ascii=False))
+assert any(asset["file"] == "female_casualsuit01.mhclo" for asset in report["assets"]), report
+assert audit["skinCount"] >= 1, audit
+assert audit["jointCount"] >= 40, audit
+assert audit["maxTextureDimension"] <= 1024, audit
+assert audit["glbBytes"] < 12 * 1024 * 1024, audit
+print(json.dumps({"candidate": report, "glbAudit": audit}, indent=2, ensure_ascii=False))
 PY
