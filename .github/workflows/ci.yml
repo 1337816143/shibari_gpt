@@ -40,7 +40,7 @@ jobs:
       - run: npm run verify:bundle
       - run: npm run test:e2e
 
-  candidate-gate:
+  candidate_gate:
     runs-on: ubuntu-latest
     outputs:
       requested: ${{ steps.commit.outputs.requested }}
@@ -69,10 +69,10 @@ jobs:
             echo "No MPFB marker; heavy generation remains skipped."
           fi
 
-  mpfb-candidate:
+  mpfb_candidate:
     name: Generate MPFB technical candidate
-    needs: [validate, candidate-gate]
-    if: needs.validate.result == 'success' && needs.candidate-gate.outputs.requested == 'true'
+    needs: [validate, candidate_gate]
+    if: needs.validate.result == 'success' && needs.candidate_gate.outputs.requested == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
@@ -82,7 +82,7 @@ jobs:
       - name: Check out exact validated source
         uses: actions/checkout@v6
         with:
-          ref: ${{ needs.candidate-gate.outputs.head_sha }}
+          ref: ${{ needs.candidate_gate.outputs.head_sha }}
       - name: Record pipeline revision
         run: git rev-parse HEAD | tee "$RUNNER_TEMP/pipeline-sha.txt"
       - name: Check runner capacity
