@@ -1,0 +1,63 @@
+name: Generate MPFB technical candidate
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/generate-mpfb-candidate.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mpfb-technical-candidate
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    name: Generate adult female technical candidate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      BLENDER_VERSION: 4.5.12
+      OUTPUT_DIR: ${{ runner.temp }}/shibari-mpfb/output
+    steps:
+      - name: Check out candidate pipeline
+        uses: actions/checkout@v6
+        with:
+          ref: agent/phase-1-3d-poc
+      - name: Record pipeline revision
+        run: git rev-parse HEAD | tee "$RUNNER_TEMP/pipeline-sha.txt"
+      - name: Check runner capacity
+        run: |
+          df -h
+          free -h
+      - name: Install headless rendering dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libegl1 libgl1 libglx-mesa0 libxi6 libxkbcommon0 libxrender1 \
+            libxrandr2 libxfixes3 libxinerama1 libxcursor1 libxxf86vm1 \
+            libwayland-client0 libwayland-egl1 mesa-utils xz-utils
+      - name: Generate MPFB candidate
+        shell: bash
+        run: bash tools/blender/run_candidate_pipeline.sh
+      - name: Summarize candidate
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat "$OUTPUT_DIR/candidate-report.json"
+          cat "$OUTPUT_DIR/SHA256.txt"
+          du -ah "$OUTPUT_DIR" | sort -h | tail -30
+      - name: Upload candidate and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpfb-technical-candidate-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/shibari-mpfb/output
+            ${{ runner.temp }}/pipeline-sha.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
