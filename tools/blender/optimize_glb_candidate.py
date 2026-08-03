@@ -169,7 +169,8 @@ def main() -> None:
     report = json.loads(candidate_report_path.read_text(encoding="utf-8"))
     report["texturePolicy"] = {
         "maxDimension": MAX_TEXTURE_DIMENSION,
-        "stage": "post-export-reimport-material-replacement",
+        "stage": "post-export-reimport",
+        "materialImagesReplaced": True,
         "images": texture_report,
     }
     report["unoptimizedGlbBytes"] = source_path.stat().st_size
