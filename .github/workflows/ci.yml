@@ -39,3 +39,85 @@ jobs:
       - run: npm run build
       - run: npm run verify:bundle
       - run: npm run test:e2e
+
+  candidate-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      requested: ${{ steps.commit.outputs.requested }}
+      head_sha: ${{ steps.commit.outputs.head_sha }}
+    env:
+      HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Check out exact source revision
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 1
+      - name: Inspect candidate trigger marker
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          message="$(git log -1 --pretty=%B)"
+          head_sha="$(git rev-parse HEAD)"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          if grep -Fq '[mpfb-candidate]' <<< "$message"; then
+            echo "requested=true" >> "$GITHUB_OUTPUT"
+            echo "MPFB candidate generation requested for $head_sha"
+          else
+            echo "requested=false" >> "$GITHUB_OUTPUT"
+            echo "No MPFB marker; heavy generation remains skipped."
+          fi
+
+  mpfb-candidate:
+    name: Generate MPFB technical candidate
+    needs: [validate, candidate-gate]
+    if: needs.validate.result == 'success' && needs.candidate-gate.outputs.requested == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      BLENDER_VERSION: 4.5.12
+      OUTPUT_DIR: ${{ runner.temp }}/shibari-mpfb/output
+    steps:
+      - name: Check out exact validated source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.candidate-gate.outputs.head_sha }}
+      - name: Record pipeline revision
+        run: git rev-parse HEAD | tee "$RUNNER_TEMP/pipeline-sha.txt"
+      - name: Check runner capacity
+        run: |
+          df -h
+          free -h
+      - name: Install headless rendering dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libegl1 libgl1 libglx-mesa0 libxi6 libxkbcommon0 libxrender1 \
+            libxrandr2 libxfixes3 libxinerama1 libxcursor1 libxxf86vm1 \
+            libwayland-client0 libwayland-egl1 mesa-utils xz-utils
+      - name: Generate MPFB candidate
+        run: bash tools/blender/run_candidate_pipeline.sh
+      - name: Validate candidate outputs
+        if: success()
+        run: |
+          set -euo pipefail
+          test -s "$OUTPUT_DIR/shibari-adult-female-candidate.glb"
+          test -s "$OUTPUT_DIR/candidate-report.json"
+          for view in front back left right; do
+            test -s "$OUTPUT_DIR/preview-${view}.png"
+          done
+          cat "$OUTPUT_DIR/candidate-report.json"
+          cat "$OUTPUT_DIR/SHA256.txt"
+          du -ah "$OUTPUT_DIR" | sort -h | tail -30
+      - name: Upload candidate and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpfb-technical-candidate-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/shibari-mpfb/output
+            ${{ runner.temp }}/pipeline-sha.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
