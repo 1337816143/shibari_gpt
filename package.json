@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "verify:models": "node scripts/verify-model-assets.mjs",
-    "check": "npm run lint && npm run typecheck && npm run verify:models && npm run test && npm run build"
+    "verify:bundle": "node scripts/verify-bundle-budget.mjs",
+    "check": "npm run lint && npm run typecheck && npm run verify:models && npm run test && npm run build && npm run verify:bundle"
   },
   "dependencies": {
     "@react-three/drei": "10.7.7",
