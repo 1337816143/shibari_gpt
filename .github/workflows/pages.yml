@@ -27,6 +27,10 @@ jobs:
         uses: actions/configure-pages@v5
       - run: npm ci --no-audit --no-fund
       - run: npm run build
+      - name: Stamp deployment source
+        shell: bash
+        run: |
+          node -e "require('fs').writeFileSync('dist/deployment.json', JSON.stringify({ sha: process.env.GITHUB_SHA, workflowRun: process.env.GITHUB_RUN_ID, deployedAt: new Date().toISOString() }, null, 2) + '\n')"
       - name: Validate built Pages artifact
         shell: bash
         run: |
@@ -36,6 +40,7 @@ jobs:
           grep -Eq 'src="/shibari_gpt/assets/.+\.js"' dist/index.html
           grep -Eq 'href="/shibari_gpt/assets/.+\.css"' dist/index.html
           test -s dist/404.html
+          test "$(node -p "require('./dist/deployment.json').sha")" = "${GITHUB_SHA}"
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
@@ -65,22 +70,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Validating ${PAGE_URL}"
+          echo "Validating ${PAGE_URL} at ${GITHUB_SHA}"
 
           for attempt in {1..18}; do
             if curl --fail --silent --show-error --location \
               --connect-timeout 10 --max-time 30 \
               -H 'Cache-Control: no-cache' \
-              "${PAGE_URL}?deployment=${GITHUB_SHA}" \
-              --output page.html; then
+              "${PAGE_URL}deployment.json?deployment=${GITHUB_SHA}" \
+              --output deployment.json && \
+              [ "$(node -p "require('./deployment.json').sha")" = "${GITHUB_SHA}" ]; then
               break
             fi
             if [ "${attempt}" -eq 18 ]; then
-              echo 'Public Pages endpoint did not become available.' >&2
+              echo 'The public Pages endpoint did not expose the expected deployment commit.' >&2
+              cat deployment.json 2>/dev/null || true
               exit 1
             fi
             sleep 10
           done
+
+          curl --fail --silent --show-error --location \
+            --connect-timeout 10 --max-time 30 \
+            -H 'Cache-Control: no-cache' \
+            "${PAGE_URL}?deployment=${GITHUB_SHA}" \
+            --output page.html
 
           grep -Fq '<title>Shibari Studio · 3D 绳艺教学</title>' page.html
           grep -Fq 'id="root"' page.html
@@ -96,4 +109,4 @@ jobs:
           test -s app.js
           test -s app.css
 
-          echo "Public deployment accepted: ${PAGE_URL}"
+          echo "Public deployment accepted: ${PAGE_URL} (${GITHUB_SHA})"
