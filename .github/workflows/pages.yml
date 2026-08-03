@@ -2,8 +2,18 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: [main, 'agent/phase-1-3d-poc']
+    branches: [main]
+    paths: ['.github/workflows/pages.yml']
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: ['agent/phase-1-3d-poc']
   workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Branch, tag, or commit to deploy
+        required: false
+        default: agent/phase-1-3d-poc
 
 permissions:
   contents: read
@@ -11,14 +21,26 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: pages-production
+  cancel-in-progress: true
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+    env:
+      SOURCE_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.source_ref || 'agent/phase-1-3d-poc' }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out validated site source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_REF }}
+      - name: Record source revision
+        id: source
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -27,31 +49,36 @@ jobs:
         uses: actions/configure-pages@v5
       - run: npm ci --no-audit --no-fund
       - run: npm run build
-      - name: Stamp deployment source
-        shell: bash
+      - name: Stamp deployed source
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
-          node -e "require('fs').writeFileSync('dist/deployment.json', JSON.stringify({ sha: process.env.GITHUB_SHA, workflowRun: process.env.GITHUB_RUN_ID, deployedAt: new Date().toISOString() }, null, 2) + '\n')"
-      - name: Validate built Pages artifact
+          node -e "require('fs').writeFileSync('dist/deployment.json', JSON.stringify({ sha: process.env.SOURCE_SHA, deployWorkflowSha: process.env.GITHUB_SHA, workflowRun: process.env.GITHUB_RUN_ID, deployedAt: new Date().toISOString() }, null, 2) + '\n')"
+      - name: Validate Pages artifact
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
         shell: bash
         run: |
           set -euo pipefail
           test -s dist/index.html
+          test -s dist/404.html
+          test -s dist/models/rigged-figure-qa/RiggedFigure.glb
           grep -Fq '<title>Shibari Studio · 3D 绳艺教学</title>' dist/index.html
           grep -Eq 'src="/shibari_gpt/assets/.+\.js"' dist/index.html
           grep -Eq 'href="/shibari_gpt/assets/.+\.css"' dist/index.html
-          test -s dist/404.html
-          test "$(node -p "require('./dist/deployment.json').sha")" = "${GITHUB_SHA}"
+          test "$(node -p "require('./dist/deployment.json').sha")" = "${SOURCE_SHA}"
+          (cd dist/models/rigged-figure-qa && sha256sum --check SHA256.txt)
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: dist
 
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
-    runs-on: ubuntu-latest
     outputs:
       page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
@@ -60,29 +87,30 @@ jobs:
         uses: actions/deploy-pages@v4
 
   verify-public-site:
-    name: Verify public Pages site
-    needs: deploy
+    name: Verify deployed site
+    needs: [build, deploy]
     runs-on: ubuntu-latest
+    env:
+      PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+      SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
     steps:
-      - name: Wait for and validate public deployment
-        env:
-          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+      - name: Validate public commit and assets
         shell: bash
         run: |
           set -euo pipefail
-          echo "Validating ${PAGE_URL} at ${GITHUB_SHA}"
+          echo "Waiting for ${PAGE_URL} to expose ${SOURCE_SHA}"
 
-          for attempt in {1..18}; do
+          for attempt in {1..30}; do
             if curl --fail --silent --show-error --location \
               --connect-timeout 10 --max-time 30 \
               -H 'Cache-Control: no-cache' \
-              "${PAGE_URL}deployment.json?deployment=${GITHUB_SHA}" \
+              "${PAGE_URL}deployment.json?acceptance=${SOURCE_SHA}-${attempt}" \
               --output deployment.json && \
-              [ "$(node -p "require('./deployment.json').sha")" = "${GITHUB_SHA}" ]; then
+              [ "$(node -p "require('./deployment.json').sha")" = "${SOURCE_SHA}" ]; then
               break
             fi
-            if [ "${attempt}" -eq 18 ]; then
-              echo 'The public Pages endpoint did not expose the expected deployment commit.' >&2
+            if [ "${attempt}" -eq 30 ]; then
+              echo "Expected deployment ${SOURCE_SHA} was not observed." >&2
               cat deployment.json 2>/dev/null || true
               exit 1
             fi
@@ -92,11 +120,14 @@ jobs:
           curl --fail --silent --show-error --location \
             --connect-timeout 10 --max-time 30 \
             -H 'Cache-Control: no-cache' \
-            "${PAGE_URL}?deployment=${GITHUB_SHA}" \
+            "${PAGE_URL}?acceptance=${SOURCE_SHA}" \
             --output page.html
+          curl --fail --silent --show-error --location --max-time 30 \
+            "${PAGE_URL}404.html?acceptance=${SOURCE_SHA}" --output not-found.html
 
           grep -Fq '<title>Shibari Studio · 3D 绳艺教学</title>' page.html
           grep -Fq 'id="root"' page.html
+          test -s not-found.html
 
           script_path="$(grep -oE 'src="/shibari_gpt/assets/[^"]+\.js"' page.html | head -1 | cut -d'"' -f2)"
           style_path="$(grep -oE 'href="/shibari_gpt/assets/[^"]+\.css"' page.html | head -1 | cut -d'"' -f2)"
@@ -106,7 +137,13 @@ jobs:
           origin="$(printf '%s' "${PAGE_URL}" | sed -E 's#(https://[^/]+).*#\1#')"
           curl --fail --silent --show-error --location --max-time 30 "${origin}${script_path}" --output app.js
           curl --fail --silent --show-error --location --max-time 30 "${origin}${style_path}" --output app.css
+          curl --fail --silent --show-error --location --max-time 30 \
+            "${PAGE_URL}models/rigged-figure-qa/RiggedFigure.glb" --output RiggedFigure.glb
+          curl --fail --silent --show-error --location --max-time 30 \
+            "${PAGE_URL}models/rigged-figure-qa/SHA256.txt" --output SHA256.txt
           test -s app.js
           test -s app.css
+          test -s RiggedFigure.glb
+          sha256sum --check SHA256.txt
 
-          echo "Public deployment accepted: ${PAGE_URL} (${GITHUB_SHA})"
+          echo "Public deployment accepted: ${PAGE_URL} (${SOURCE_SHA})"
