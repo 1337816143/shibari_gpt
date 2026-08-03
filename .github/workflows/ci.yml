@@ -37,3 +37,58 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
+
+  pages-acceptance:
+    name: Accept deployed GitHub Pages
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/phase-1-3d-poc'
+    needs: e2e
+    runs-on: ubuntu-latest
+    env:
+      PAGE_URL: https://1337816143.github.io/shibari_gpt/
+      EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Verify deployed commit and public assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Waiting for ${PAGE_URL} to expose ${EXPECTED_SHA}"
+
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error --location \
+              --connect-timeout 10 --max-time 30 \
+              -H 'Cache-Control: no-cache' \
+              "${PAGE_URL}deployment.json?acceptance=${EXPECTED_SHA}-${attempt}" \
+              --output deployment.json && \
+              [ "$(node -p "require('./deployment.json').sha")" = "${EXPECTED_SHA}" ]; then
+              break
+            fi
+
+            if [ "${attempt}" -eq 30 ]; then
+              echo "Expected deployment ${EXPECTED_SHA} was not observed." >&2
+              cat deployment.json 2>/dev/null || true
+              exit 1
+            fi
+            sleep 10
+          done
+
+          curl --fail --silent --show-error --location \
+            --connect-timeout 10 --max-time 30 \
+            -H 'Cache-Control: no-cache' \
+            "${PAGE_URL}?acceptance=${EXPECTED_SHA}" \
+            --output page.html
+
+          grep -Fq '<title>Shibari Studio · 3D 绳艺教学</title>' page.html
+          grep -Fq 'id="root"' page.html
+
+          script_path="$(grep -oE 'src="/shibari_gpt/assets/[^"]+\.js"' page.html | head -1 | cut -d'"' -f2)"
+          style_path="$(grep -oE 'href="/shibari_gpt/assets/[^"]+\.css"' page.html | head -1 | cut -d'"' -f2)"
+          test -n "${script_path}"
+          test -n "${style_path}"
+
+          origin="$(printf '%s' "${PAGE_URL}" | sed -E 's#(https://[^/]+).*#\1#')"
+          curl --fail --silent --show-error --location --max-time 30 "${origin}${script_path}" --output app.js
+          curl --fail --silent --show-error --location --max-time 30 "${origin}${style_path}" --output app.css
+          test -s app.js
+          test -s app.css
+
+          echo "Accepted ${PAGE_URL} at ${EXPECTED_SHA}"
