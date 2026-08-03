@@ -10,6 +10,21 @@ import zipfile
 from pathlib import Path
 
 
+SYSTEM_ASSET_DIRECTORIES = {
+    "clothes",
+    "eyes",
+    "eyebrows",
+    "eyelashes",
+    "hair",
+    "poses",
+    "proxymeshes",
+    "rigs",
+    "skins",
+    "teeth",
+    "tongue",
+}
+
+
 def dynamic_import(package_suffix: str, key: str):
     for module_name in list(sys.modules):
         if module_name.endswith(package_suffix):
@@ -24,6 +39,10 @@ def script_args() -> list[str]:
     return sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
 
 
+def asset_directory_names(path: Path) -> set[str]:
+    return {child.name for child in path.iterdir() if child.is_dir()}
+
+
 def locate_asset_root(extracted: Path) -> Path:
     markers = list(extracted.rglob("female_casualsuit01.mhclo"))
     if not markers:
@@ -31,10 +50,26 @@ def locate_asset_root(extracted: Path) -> Path:
     if not markers:
         raise FileNotFoundError("Could not locate a known fully clothed female asset in the pack")
 
-    clothes_dir = markers[0].parent
-    if clothes_dir.name != "clothes":
-        raise RuntimeError(f"Unexpected clothes directory: {clothes_dir}")
-    return clothes_dir.parent
+    marker = markers[0]
+    candidates = [marker.parent, *marker.parents]
+    for candidate in candidates:
+        if candidate == extracted.parent:
+            break
+        names = asset_directory_names(candidate)
+        if "clothes" in names and len(names & SYSTEM_ASSET_DIRECTORIES) >= 3:
+            return candidate
+
+    raise RuntimeError(
+        "Could not identify the MakeHuman asset root above "
+        f"{marker}; inspected {[str(candidate) for candidate in candidates[:6]]}"
+    )
+
+
+def find_installed_asset(destination: Path, category: str, filename: str) -> Path:
+    matches = list((destination / category).rglob(filename))
+    if not matches:
+        raise FileNotFoundError(destination / category / "**" / filename)
+    return matches[0]
 
 
 def main() -> None:
@@ -67,15 +102,15 @@ def main() -> None:
                 copied.append(child.name)
 
     required = [
-        destination / "clothes" / "female_casualsuit01.mhclo",
-        destination / "eyes" / "low-poly.mhclo",
+        find_installed_asset(destination, "clothes", "female_casualsuit01.mhclo"),
+        find_installed_asset(destination, "eyes", "low-poly.mhclo"),
     ]
-    missing = [str(path) for path in required if not path.exists()]
-    if missing:
-        raise FileNotFoundError(f"Installed asset pack is incomplete: {missing}")
 
     print(f"MPFB assets installed to {destination}")
     print(f"Copied top-level entries: {', '.join(copied)}")
+    print("Verified assets:")
+    for path in required:
+        print(f"- {path.relative_to(destination)}")
 
 
 if __name__ == "__main__":
