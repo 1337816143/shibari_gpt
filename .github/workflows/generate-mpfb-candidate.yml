@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: mpfb-technical-candidate
@@ -27,7 +28,12 @@ jobs:
         with:
           ref: agent/phase-1-3d-poc
       - name: Record pipeline revision
-        run: git rev-parse HEAD | tee "$RUNNER_TEMP/pipeline-sha.txt"
+        id: revision
+        shell: bash
+        run: |
+          sha="$(git rev-parse HEAD)"
+          echo "$sha" | tee "$RUNNER_TEMP/pipeline-sha.txt"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - name: Check runner capacity
         run: |
           df -h
@@ -40,6 +46,7 @@ jobs:
             libxrandr2 libxfixes3 libxinerama1 libxcursor1 libxxf86vm1 \
             libwayland-client0 libwayland-egl1 mesa-utils xz-utils
       - name: Generate MPFB candidate
+        id: generate
         shell: bash
         run: bash tools/blender/run_candidate_pipeline.sh
       - name: Summarize candidate
@@ -51,6 +58,7 @@ jobs:
           cat "$OUTPUT_DIR/SHA256.txt"
           du -ah "$OUTPUT_DIR" | sort -h | tail -30
       - name: Upload candidate and diagnostics
+        id: upload
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -61,3 +69,51 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
           compression-level: 0
+      - name: Report run to Draft PR
+        if: always()
+        uses: actions/github-script@v9
+        env:
+          GENERATION_OUTCOME: ${{ steps.generate.outcome }}
+          PIPELINE_SHA: ${{ steps.revision.outputs.sha }}
+          ARTIFACT_NAME: mpfb-technical-candidate-${{ github.run_id }}
+        with:
+          script: |
+            const marker = '<!-- mpfb-candidate-status -->';
+            const success = process.env.GENERATION_OUTCOME === 'success';
+            const body = [
+              marker,
+              '## MPFB technical candidate pipeline',
+              '',
+              `- Status: ${success ? '✅ generated' : '❌ generation failed'}`,
+              `- Run ID: \`${context.runId}\``,
+              `- Pipeline source: \`${process.env.PIPELINE_SHA || 'unavailable'}\``,
+              `- Artifact: \`${process.env.ARTIFACT_NAME}\``,
+              `- Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              success
+                ? 'The output is a technical-review candidate only. It has not replaced the default teaching model and has not received rope, medical, or model-technical approval.'
+                : 'The diagnostic artifact is retained so the pipeline can be repaired from the exact failure evidence.',
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 1,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: 1,
+                body,
+              });
+            }
