@@ -69,10 +69,12 @@ const incrementalThreeDimensionalFiles = new Set(
   [...threeDimensionalFiles].filter((file) => !initialFiles.has(file)),
 );
 
-const assetFiles = manifestEntries
-  .map(([, chunk]) => chunk.file)
-  .filter((file) => typeof file === 'string');
-const allFiles = new Set(assetFiles);
+const allFiles = new Set();
+for (const [, chunk] of manifestEntries) {
+  if (chunk.file) allFiles.add(chunk.file);
+  for (const cssFile of chunk.css ?? []) allFiles.add(cssFile);
+  for (const assetFile of chunk.assets ?? []) allFiles.add(assetFile);
+}
 
 const initialGzip = await gzipTotal(initialFiles, (file) => /\.(?:js|css)$/.test(file));
 const threeDimensionalIncrementalGzip = await gzipTotal(
