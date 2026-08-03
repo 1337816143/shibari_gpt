@@ -16,6 +16,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: pages-production
@@ -93,6 +94,7 @@ jobs:
       SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
     steps:
       - name: Validate public commit and assets
+        id: public
         shell: bash
         run: |
           set -euo pipefail
@@ -145,3 +147,51 @@ jobs:
           sha256sum --check SHA256.txt
 
           echo "Public deployment accepted: ${PAGE_URL} (${SOURCE_SHA})"
+      - name: Report deployment to Draft PR
+        if: always()
+        uses: actions/github-script@v9
+        env:
+          PUBLIC_OUTCOME: ${{ steps.public.outcome }}
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+          SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
+        with:
+          script: |
+            const marker = '<!-- pages-deployment-status -->';
+            const success = process.env.PUBLIC_OUTCOME === 'success';
+            const body = [
+              marker,
+              '## GitHub Pages deployment',
+              '',
+              `- Status: ${success ? '✅ publicly accepted' : '❌ public acceptance failed'}`,
+              `- Source commit: \`${process.env.SOURCE_SHA}\``,
+              `- Deployment run ID: \`${context.runId}\``,
+              `- Public site: ${process.env.PAGE_URL}`,
+              `- Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              success
+                ? 'Acceptance checked the exact deployment fingerprint, homepage, 404 document, JavaScript, CSS, QA GLB, and the GLB SHA-256 checksum.'
+                : 'The deployment was not accepted as current; inspect this run before treating the public site as updated.',
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 1,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: 1,
+                body,
+              });
+            }
