@@ -1,5 +1,28 @@
 import { expect, test } from '@playwright/test';
 
+const isThreeDimensionalAsset = (url: string) =>
+  /\/assets\/(?:StudioScene|react-three|three-core|three-stdlib|GlbAssetModel)-/.test(url);
+
+test('does not download the 3D engine before safety acknowledgement', async ({ page }) => {
+  const requestedThreeDimensionalAssets: string[] = [];
+  page.on('request', (request) => {
+    if (isThreeDimensionalAsset(request.url())) requestedThreeDimensionalAssets.push(request.url());
+  });
+
+  await page.goto('./');
+  await expect(page.getByRole('heading', { name: /把每一段绳路/ })).toBeVisible();
+  expect(requestedThreeDimensionalAssets).toEqual([]);
+
+  await page.getByRole('link', { name: '进入 3D 练习室' }).click();
+  await expect(page.getByRole('button', { name: '我已了解' })).toBeVisible();
+  await page.waitForTimeout(250);
+  expect(requestedThreeDimensionalAssets).toEqual([]);
+
+  await page.getByRole('button', { name: '我已了解' }).click();
+  await expect(page.locator('canvas')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => requestedThreeDimensionalAssets.length).toBeGreaterThan(0);
+});
+
 test('opens the studio, advances steps and records completion', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByRole('heading', { name: /把每一段绳路/ })).toBeVisible();
