@@ -16,9 +16,8 @@ import type { SceneSettings } from './types/scene';
 import './scene-launch.css';
 import './consent-modal.css';
 
-const loadStudioScene = () => import('./components/scene/StudioScene');
 const StudioScene = lazy(() =>
-  loadStudioScene().then((module) => ({ default: module.StudioScene })),
+  import('./components/scene/StudioScene').then((module) => ({ default: module.StudioScene })),
 );
 
 const initialSettings: SceneSettings = {
@@ -70,12 +69,7 @@ export function App() {
     ? { ...settings, viewPreset: step.recommendedView }
     : settings;
 
-  const preloadStudio = () => {
-    void loadStudioScene();
-  };
-
   const activateStudio = () => {
-    preloadStudio();
     setStudioActivated(true);
     setMenuOpen(false);
   };
@@ -120,7 +114,7 @@ export function App() {
         </a>
         <nav className={menuOpen ? 'nav is-open' : 'nav'}>
           <a href="#library">课程库</a>
-          <a href="#course" onMouseEnter={preloadStudio} onFocus={preloadStudio} onClick={activateStudio}>练习室</a>
+          <a href="#course" onClick={activateStudio}>练习室</a>
           <a href="#path">学习路径</a><a href="#safety">安全入门</a><a href="#glossary">术语表</a><a href="#research">研究与审核</a>
         </nav>
         <button className="menu-button" onClick={() => setMenuOpen((value) => !value)} aria-label="切换菜单">{menuOpen ? <X /> : <Menu />}</button>
@@ -134,7 +128,7 @@ export function App() {
             <h1>把每一段绳路，<br /><em>看清楚再练习。</em></h1>
             <p>面向成年学习者的 3D 互动教学原型。现在加入受控 GLB 下载、体积和哈希校验、加载超时、模型诊断、资产来源与审核透明度；仍不替代线下专业指导。</p>
             <div className="hero__actions">
-              <a className="primary-button" href="#course" onMouseEnter={preloadStudio} onFocus={preloadStudio} onClick={activateStudio}>进入 3D 练习室</a>
+              <a className="primary-button" href="#course" onClick={activateStudio}>进入 3D 练习室</a>
               <a className="secondary-button" href="#library">浏览课程库</a>
             </div>
             <div className="hero__metrics"><span><strong>360°</strong>自由视角</span><span><strong>{course.steps.length}</strong>独立步骤</span><span><strong>GLB/2D</strong>双重回退</span></div>
@@ -209,13 +203,13 @@ export function App() {
                   <div className="scene-launch scene-launch--consent">
                     <ShieldCheck size={34} />
                     <strong>请先完成安全确认</strong>
-                    <span>确认后才会加载 Three.js 和 3D 教学场景。</span>
+                    <span>确认前不会下载 3D 引擎；确认后才会初始化 WebGL 教学场景。</span>
                   </div>
                 ) : (
-                  <button className="scene-launch" onMouseEnter={preloadStudio} onFocus={preloadStudio} onClick={activateStudio}>
+                  <button className="scene-launch" onClick={activateStudio}>
                     <Layers3 size={34} />
                     <strong>加载 3D 练习室</strong>
-                    <span>悬停时预取代码，点击并确认后才初始化 WebGL。</span>
+                    <span>点击后先完成安全确认；确认前不会下载 3D 引擎。</span>
                   </button>
                 )}
                 {notice && <button className="performance-notice" onClick={() => setNotice(null)}>{notice}<X size={14} /></button>}
@@ -283,7 +277,7 @@ export function App() {
         <section id="research" className="content-section research-section">
           <div className="section-heading"><div><span className="eyebrow">研究与资产状态</span><h2>不伪装任何模型或课程的完成度</h2></div></div>
           <div className="research-grid">
-            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查与审核记录 Schema</li><li>GLB 受控下载、超时、体积和 SHA-256 校验</li><li>骨骼安全克隆、模型诊断与模型级失败回退</li><li>资产来源、许可和审核状态展示</li><li>学习记录、锁定依赖、代码预取和 2D 降级</li></ul></article>
+            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查与审核记录 Schema</li><li>GLB 受控下载、超时、体积和 SHA-256 校验</li><li>骨骼安全克隆、模型诊断与模型级失败回退</li><li>资产来源、许可和审核状态展示</li><li>学习记录、锁定依赖、确认后按需加载 3D 和 2D 降级</li></ul></article>
             <article><h3>生产发布阻塞项</h3><ul><li>最终写实成年女性着装模型</li><li>课程姿势、骨骼权重和人体 landmark 验收</li><li>专业绳师逐步校验绳路</li><li>医学/人体结构安全审核</li><li>GLB 压缩、LOD、纹理压缩和真机性能测试</li></ul></article>
             <article className="warning-card"><h3>生成工具边界</h3><p>img2threejs 仍不能替代生产级人物重建、拓扑、绑定和权重流程。项目会尝试基于 CC0 MakeHuman/MPFB 资产建立可复现人物管线，但只有通过来源、着装、骨骼、姿势、绳路和性能验收后才会替换默认占位模型。</p></article>
           </div>
