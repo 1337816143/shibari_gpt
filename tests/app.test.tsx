@@ -13,15 +13,22 @@ describe('App', () => {
   afterEach(() => cleanup());
 
   it('requires acknowledgement and falls back when the scene cannot initialize', async () => {
-    render(<App />);
-    expect(screen.getByText(/第四阶段 PoC/)).toBeInTheDocument();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    fireEvent.click(screen.getByRole('link', { name: '进入 3D 练习室' }));
-    expect(screen.getByText(/本课程是工程原型/)).toBeInTheDocument();
+    try {
+      render(<App />);
+      expect(screen.getByText(/第四阶段 PoC/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '我已了解' }));
-    expect(await screen.findByRole('img', { name: /简化二维绳路图/ })).toBeInTheDocument();
-    expect(screen.getByText(/3D 场景无法初始化/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('link', { name: '进入 3D 练习室' }));
+      expect(screen.getByText(/本课程是工程原型/)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: '我已了解' }));
+      expect(await screen.findByRole('img', { name: /简化二维绳路图/ })).toBeInTheDocument();
+      expect(screen.getByText(/3D 场景无法初始化/)).toBeInTheDocument();
+      expect(consoleError).toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it('stores favorites and offers the diagram fallback', () => {
