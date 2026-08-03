@@ -15,6 +15,9 @@ OUTPUT_DIR="${OUTPUT_DIR:-$WORK_ROOT/output}"
 BLENDER_ARCHIVE="$WORK_ROOT/$BLENDER_ARCHIVE_NAME"
 BLENDER_CHECKSUM="$WORK_ROOT/$BLENDER_ARCHIVE_NAME.sha256"
 ASSET_ARCHIVE="$WORK_ROOT/makehuman-system-assets.zip"
+UNOPTIMIZED_GLB="$WORK_ROOT/shibari-adult-female-candidate.unoptimized.glb"
+OPTIMIZED_GLB="$WORK_ROOT/shibari-adult-female-candidate.optimized.glb"
+OPTIMIZED_TEXTURES="$WORK_ROOT/optimized-textures"
 
 export HOME="$BLENDER_HOME"
 export BLENDER_VERSION BLENDER_HOME OUTPUT_DIR
@@ -74,6 +77,15 @@ test -s "$OUTPUT_DIR/shibari-adult-female-candidate.glb"
 for view in front back left right; do
   test -s "$OUTPUT_DIR/preview-${view}.png"
 done
+
+mv "$OUTPUT_DIR/shibari-adult-female-candidate.glb" "$UNOPTIMIZED_GLB"
+"$BLENDER_BIN" -b --python-exit-code 1 \
+  --python tools/blender/optimize_glb_candidate.py \
+  -- "$UNOPTIMIZED_GLB" "$OPTIMIZED_GLB" "$OPTIMIZED_TEXTURES" "$OUTPUT_DIR/candidate-report.json" \
+  2>&1 | tee "$OUTPUT_DIR/texture-optimization.log"
+test -s "$OPTIMIZED_GLB"
+mv "$OPTIMIZED_GLB" "$OUTPUT_DIR/shibari-adult-female-candidate.glb"
+
 (cd "$OUTPUT_DIR" && sha256sum shibari-adult-female-candidate.glb > SHA256.txt)
 
 python tools/blender/audit_glb_candidate.py \
@@ -99,6 +111,7 @@ assert report["meshCount"] >= 6, report
 assert report["adultPresentation"] is True, report
 assert report["presentation"] == "neutral-fully-clothed", report
 assert any(asset["file"] == "female_casualsuit01.mhclo" for asset in report["assets"]), report
+assert report["texturePolicy"]["stage"] == "post-export-reimport", report
 assert audit["skinCount"] >= 1, audit
 assert audit["jointCount"] >= 40, audit
 assert audit["maxTextureDimension"] <= 1024, audit
