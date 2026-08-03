@@ -34,6 +34,49 @@ jobs:
           sha="$(git rev-parse HEAD)"
           echo "$sha" | tee "$RUNNER_TEMP/pipeline-sha.txt"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Report start to Draft PR
+        uses: actions/github-script@v9
+        env:
+          PIPELINE_SHA: ${{ steps.revision.outputs.sha }}
+          ARTIFACT_NAME: mpfb-technical-candidate-${{ github.run_id }}
+        with:
+          script: |
+            const marker = '<!-- mpfb-candidate-status -->';
+            const body = [
+              marker,
+              '## MPFB technical candidate pipeline',
+              '',
+              '- Status: ⏳ running',
+              `- Run ID: \`${context.runId}\``,
+              `- Pipeline source: \`${process.env.PIPELINE_SHA}\``,
+              `- Planned artifact: \`${process.env.ARTIFACT_NAME}\``,
+              `- Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'This run generates a technical-review candidate only; it cannot approve or replace the default teaching model.',
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 1,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: 1,
+                body,
+              });
+            }
       - name: Check runner capacity
         run: |
           df -h
@@ -69,7 +112,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
           compression-level: 0
-      - name: Report run to Draft PR
+      - name: Report result to Draft PR
         if: always()
         uses: actions/github-script@v9
         env:
