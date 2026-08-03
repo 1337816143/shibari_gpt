@@ -23,6 +23,7 @@ jobs:
       - run: npm run verify:models
       - run: npm run test
       - run: npm run build
+      - run: npm run verify:bundle
 
   e2e:
     needs: validate
@@ -36,4 +37,5 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: npm run build
+      - run: npm run verify:bundle
       - run: npm run test:e2e
