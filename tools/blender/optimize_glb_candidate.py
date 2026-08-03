@@ -1,10 +1,9 @@
-"""Re-import a generated GLB, downscale loaded textures, and export a mobile candidate."""
+"""Re-import a generated GLB, replace packed textures, and export a mobile candidate."""
 
 from __future__ import annotations
 
 import json
 import re
-import shutil
 import sys
 from pathlib import Path
 
@@ -40,6 +39,17 @@ def safe_filename(name: str, index: int) -> str:
     return f"{index:02d}-{cleaned or 'texture'}.png"
 
 
+def image_nodes_for(target: bpy.types.Image) -> list[bpy.types.ShaderNodeTexImage]:
+    nodes: list[bpy.types.ShaderNodeTexImage] = []
+    for material in bpy.data.materials:
+        if not material.use_nodes or material.node_tree is None:
+            continue
+        for node in material.node_tree.nodes:
+            if node.type == "TEX_IMAGE" and node.image == target:
+                nodes.append(node)
+    return nodes
+
+
 def optimize_images(directory: Path) -> list[dict[str, object]]:
     directory.mkdir(parents=True, exist_ok=True)
     report: list[dict[str, object]] = []
@@ -47,19 +57,22 @@ def optimize_images(directory: Path) -> list[dict[str, object]]:
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.compression = 85
 
-    for index, image in enumerate(list(bpy.data.images)):
-        if image.name in {"Render Result", "Viewer Node"}:
-            continue
+    source_images = [
+        image
+        for image in list(bpy.data.images)
+        if image.name not in {"Render Result", "Viewer Node"}
+    ]
 
-        width, height = int(image.size[0]), int(image.size[1])
+    for index, source_image in enumerate(source_images):
+        width, height = int(source_image.size[0]), int(source_image.size[1])
         if width <= 0 or height <= 0:
             try:
-                _ = image.pixels[0]
+                _ = source_image.pixels[0]
             except Exception as error:
-                raise RuntimeError(f"Could not load texture {image.name}: {error}") from error
-            width, height = int(image.size[0]), int(image.size[1])
+                raise RuntimeError(f"Could not load texture {source_image.name}: {error}") from error
+            width, height = int(source_image.size[0]), int(source_image.size[1])
         if width <= 0 or height <= 0:
-            raise RuntimeError(f"Texture has no dimensions: {image.name}")
+            raise RuntimeError(f"Texture has no dimensions: {source_image.name}")
 
         target_width, target_height = width, height
         resized = max(width, height) > MAX_TEXTURE_DIMENSION
@@ -67,19 +80,37 @@ def optimize_images(directory: Path) -> list[dict[str, object]]:
             ratio = MAX_TEXTURE_DIMENSION / max(width, height)
             target_width = max(1, round(width * ratio))
             target_height = max(1, round(height * ratio))
-            image.scale(target_width, target_height)
+            source_image.scale(target_width, target_height)
 
-        optimized_path = directory / safe_filename(image.name, index)
-        original_filepath = image.filepath
-        image.filepath_raw = str(optimized_path)
-        image.file_format = "PNG"
-        image.save()
-        image.filepath = str(optimized_path)
-        image.reload()
+        optimized_path = directory / safe_filename(source_image.name, index)
+        original_filepath = source_image.filepath
+        original_colorspace = source_image.colorspace_settings.name
+        original_alpha_mode = source_image.alpha_mode
+        source_image.filepath_raw = str(optimized_path)
+        source_image.file_format = "PNG"
+        source_image.save()
+        if not optimized_path.is_file() or optimized_path.stat().st_size == 0:
+            raise RuntimeError(f"Could not save optimized texture: {optimized_path}")
 
+        replacement = bpy.data.images.load(str(optimized_path), check_existing=False)
+        replacement.name = f"{source_image.name}__mobile"
+        replacement.colorspace_settings.name = original_colorspace
+        replacement.alpha_mode = original_alpha_mode
+
+        users = image_nodes_for(source_image)
+        if not users:
+            bpy.data.images.remove(replacement, do_unlink=True)
+            raise RuntimeError(f"Texture is not referenced by any material node: {source_image.name}")
+        for node in users:
+            node.image = replacement
+
+        old_name = source_image.name
+        bpy.data.images.remove(source_image, do_unlink=True)
         report.append(
             {
-                "name": image.name,
+                "name": old_name,
+                "replacement": replacement.name,
+                "materialNodeUsers": len(users),
                 "originalFilepath": original_filepath,
                 "optimizedFilepath": str(optimized_path),
                 "original": [width, height],
@@ -88,8 +119,13 @@ def optimize_images(directory: Path) -> list[dict[str, object]]:
                 "optimizedBytes": optimized_path.stat().st_size,
             }
         )
+
     if not report:
         raise RuntimeError("No embedded GLB textures were loaded for optimization")
+
+    remaining_packed = [image.name for image in bpy.data.images if image.packed_file]
+    if remaining_packed:
+        raise RuntimeError(f"Packed images remain after material replacement: {remaining_packed}")
     return report
 
 
@@ -133,14 +169,14 @@ def main() -> None:
     report = json.loads(candidate_report_path.read_text(encoding="utf-8"))
     report["texturePolicy"] = {
         "maxDimension": MAX_TEXTURE_DIMENSION,
-        "stage": "post-export-reimport",
+        "stage": "post-export-reimport-material-replacement",
         "images": texture_report,
     }
     report["unoptimizedGlbBytes"] = source_path.stat().st_size
     report["glbBytes"] = optimized_path.stat().st_size
     candidate_report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    print(f"Optimized {len(texture_report)} textures")
+    print(f"Replaced and optimized {len(texture_report)} packed textures")
     print(f"Unoptimized GLB: {source_path.stat().st_size} bytes")
     print(f"Optimized GLB: {optimized_path.stat().st_size} bytes")
 
