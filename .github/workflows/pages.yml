@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -27,17 +27,73 @@ jobs:
         uses: actions/configure-pages@v5
       - run: npm ci --no-audit --no-fund
       - run: npm run build
+      - name: Validate built Pages artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s dist/index.html
+          grep -Fq '<title>Shibari Studio · 3D 绳艺教学</title>' dist/index.html
+          grep -Eq 'src="/shibari_gpt/assets/.+\.js"' dist/index.html
+          grep -Eq 'href="/shibari_gpt/assets/.+\.css"' dist/index.html
+          test -s dist/404.html
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: dist
+
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     needs: build
     runs-on: ubuntu-latest
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+  verify-public-site:
+    name: Verify public Pages site
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for and validate public deployment
+        env:
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Validating ${PAGE_URL}"
+
+          for attempt in {1..18}; do
+            if curl --fail --silent --show-error --location \
+              --connect-timeout 10 --max-time 30 \
+              -H 'Cache-Control: no-cache' \
+              "${PAGE_URL}?deployment=${GITHUB_SHA}" \
+              --output page.html; then
+              break
+            fi
+            if [ "${attempt}" -eq 18 ]; then
+              echo 'Public Pages endpoint did not become available.' >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+          grep -Fq '<title>Shibari Studio · 3D 绳艺教学</title>' page.html
+          grep -Fq 'id="root"' page.html
+
+          script_path="$(grep -oE 'src="/shibari_gpt/assets/[^"]+\.js"' page.html | head -1 | cut -d'"' -f2)"
+          style_path="$(grep -oE 'href="/shibari_gpt/assets/[^"]+\.css"' page.html | head -1 | cut -d'"' -f2)"
+          test -n "${script_path}"
+          test -n "${style_path}"
+
+          origin="$(printf '%s' "${PAGE_URL}" | sed -E 's#(https://[^/]+).*#\1#')"
+          curl --fail --silent --show-error --location --max-time 30 "${origin}${script_path}" --output app.js
+          curl --fail --silent --show-error --location --max-time 30 "${origin}${style_path}" --output app.css
+          test -s app.js
+          test -s app.css
+
+          echo "Public deployment accepted: ${PAGE_URL}"
