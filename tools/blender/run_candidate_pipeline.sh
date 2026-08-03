@@ -2,30 +2,59 @@
 set -euo pipefail
 
 BLENDER_VERSION="${BLENDER_VERSION:-4.5.12}"
+BLENDER_BUILD_ID="${BLENDER_BUILD_ID:-84afd5f785f7}"
+BLENDER_BUILD_NAME="blender-${BLENDER_VERSION}-stable+v45.${BLENDER_BUILD_ID}-linux.x86_64-release"
+BLENDER_ARCHIVE_NAME="${BLENDER_BUILD_NAME}.tar.xz"
+BLENDER_DOWNLOAD_BASE="https://cdn.builder.blender.org/download/daily"
+BLENDER_ARCHIVE_URL="${BLENDER_DOWNLOAD_BASE}/${BLENDER_ARCHIVE_NAME/+/%2B}"
+BLENDER_CHECKSUM_URL="${BLENDER_ARCHIVE_URL}.sha256"
+
 WORK_ROOT="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/shibari-mpfb"
 BLENDER_HOME="${BLENDER_HOME:-$WORK_ROOT/blender-home}"
 OUTPUT_DIR="${OUTPUT_DIR:-$WORK_ROOT/output}"
-BLENDER_DIR="$WORK_ROOT/blender-${BLENDER_VERSION}-linux-x64"
-BLENDER_BIN="$BLENDER_DIR/blender"
+BLENDER_ARCHIVE="$WORK_ROOT/$BLENDER_ARCHIVE_NAME"
+BLENDER_CHECKSUM="$WORK_ROOT/$BLENDER_ARCHIVE_NAME.sha256"
 ASSET_ARCHIVE="$WORK_ROOT/makehuman-system-assets.zip"
 
 export HOME="$BLENDER_HOME"
 export BLENDER_VERSION BLENDER_HOME OUTPUT_DIR
 mkdir -p "$WORK_ROOT" "$BLENDER_HOME" "$OUTPUT_DIR"
 
-curl --fail --location --retry 3 \
-  "https://download.blender.org/release/Blender4.5/blender-${BLENDER_VERSION}-linux-x64.tar.xz" \
-  --output "$WORK_ROOT/blender.tar.xz" \
+curl --fail --location --retry 5 --retry-all-errors \
+  --connect-timeout 20 --max-time 1200 \
+  "$BLENDER_ARCHIVE_URL" \
+  --output "$BLENDER_ARCHIVE" \
   2>&1 | tee "$OUTPUT_DIR/download-blender.log"
-tar -xf "$WORK_ROOT/blender.tar.xz" -C "$WORK_ROOT"
+
+curl --fail --location --retry 5 --retry-all-errors \
+  --connect-timeout 20 --max-time 120 \
+  "$BLENDER_CHECKSUM_URL" \
+  --output "$BLENDER_CHECKSUM" \
+  2>&1 | tee "$OUTPUT_DIR/download-blender-checksum.log"
+
+blender_bytes="$(stat -c%s "$BLENDER_ARCHIVE")"
+test "$blender_bytes" -gt 100000000
+expected_blender_sha="$(awk 'NR == 1 { print $1 }' "$BLENDER_CHECKSUM")"
+actual_blender_sha="$(sha256sum "$BLENDER_ARCHIVE" | awk '{ print $1 }')"
+test -n "$expected_blender_sha"
+test "$actual_blender_sha" = "$expected_blender_sha"
+xz --test "$BLENDER_ARCHIVE"
+printf 'archive=%s\nbytes=%s\nsha256=%s\n' \
+  "$BLENDER_ARCHIVE_NAME" "$blender_bytes" "$actual_blender_sha" \
+  | tee "$OUTPUT_DIR/blender-provenance.txt"
+
+tar -xJf "$BLENDER_ARCHIVE" -C "$WORK_ROOT"
+BLENDER_BIN="$WORK_ROOT/$BLENDER_BUILD_NAME/blender"
 test -x "$BLENDER_BIN"
+"$BLENDER_BIN" --version | tee "$OUTPUT_DIR/blender-version.txt"
 
 "$BLENDER_BIN" --online-mode --command extension install -s -e mpfb \
   2>&1 | tee "$OUTPUT_DIR/install-extension.log"
 "$BLENDER_BIN" --command extension list \
   2>&1 | tee "$OUTPUT_DIR/extensions.txt"
 
-curl --fail --location --retry 3 \
+curl --fail --location --retry 5 --retry-all-errors \
+  --connect-timeout 20 --max-time 1200 \
   'https://files2.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip' \
   --output "$ASSET_ARCHIVE" \
   2>&1 | tee "$OUTPUT_DIR/download-assets.log"
