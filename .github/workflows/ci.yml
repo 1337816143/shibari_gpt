@@ -118,7 +118,7 @@ jobs:
         run: |
           set -euo pipefail
           catalog="$RUNNER_TEMP/shibari-mpfb/output/catalog"
-          for slug in mpfb-sports-original mpfb-casual-original mpfb-sports-original; do
+          for slug in mpfb-casual-mobile mpfb-casual-original mpfb-sports-original; do
             destination="public/models/$slug"
             rm -rf "$destination"
             mkdir -p "$destination"
