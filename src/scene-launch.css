@@ -1,0 +1,7 @@
+.scene-launch { position: absolute; inset: 0; width: 100%; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 30px; border: 0; background: radial-gradient(circle at 50% 42%, rgba(231,173,88,.13), transparent 36%), linear-gradient(145deg, #172022, #101516); cursor: pointer; }
+.scene-launch::before { content: ''; width: 190px; height: 190px; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -58%); border: 1px solid rgba(231,173,88,.18); border-radius: 50%; }
+.scene-launch > * { position: relative; z-index: 1; }
+.scene-launch svg { color: var(--accent); margin-bottom: 8px; }
+.scene-launch strong { font-family: Georgia, "Noto Serif SC", serif; font-size: 26px; font-weight: 500; }
+.scene-launch span { max-width: 360px; color: var(--muted); font-size: 13px; line-height: 1.6; text-align: center; }
+.scene-launch--loading { cursor: progress; }

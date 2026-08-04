@@ -1,0 +1,16 @@
+{
+  "id": "replace-with-stable-review-id",
+  "role": "rope-technique",
+  "reviewer": "Replace with independently verifiable reviewer identity",
+  "status": "changes-required",
+  "scope": [
+    "pose",
+    "rope path",
+    "contact points",
+    "release sequence"
+  ],
+  "reviewedVersion": "replace-with-course-or-model-version",
+  "reviewedAt": "2026-08-02T16:00:00.000Z",
+  "notes": "Replace with specific findings, required changes and the basis for the conclusion.",
+  "evidenceUrl": "https://example.com/replace-with-review-evidence"
+}

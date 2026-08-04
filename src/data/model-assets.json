@@ -1,0 +1,240 @@
+[
+  {
+    "id": "mpfb-adult-female-casual-mobile-v1",
+    "displayName": "MPFB 成年女性 · 休闲装移动版",
+    "kind": "glb",
+    "sourceUrl": "https://static.makehumancommunity.org/mpfb.html",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "license": "CC0 1.0",
+    "attribution": "Generated with Blender 4.5 LTS + MPFB from MakeHuman CC0 system assets",
+    "status": "technical-review",
+    "adultPresentation": true,
+    "allowRemote": false,
+    "boneMap": {
+      "pelvis": "pelvis",
+      "spineLower": "spine_01",
+      "spineMiddle": "spine_02",
+      "spineUpper": "spine_03",
+      "neck": "neck_01",
+      "head": "head",
+      "leftShoulder": "clavicle_l",
+      "leftUpperArm": "upperarm_l",
+      "leftForearm": "lowerarm_l",
+      "leftHand": "hand_l",
+      "rightShoulder": "clavicle_r",
+      "rightUpperArm": "upperarm_r",
+      "rightForearm": "lowerarm_r",
+      "rightHand": "hand_r",
+      "leftThigh": "thigh_l",
+      "leftCalf": "calf_l",
+      "leftFoot": "foot_l",
+      "rightThigh": "thigh_r",
+      "rightCalf": "calf_r",
+      "rightFoot": "foot_r"
+    },
+    "transform": {
+      "position": [
+        0,
+        -0.22,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.8,
+        1.8,
+        1.8
+      ]
+    },
+    "path": "models/mpfb-casual-mobile/model.glb",
+    "presentation": "neutral-fully-clothed",
+    "sha256": "be4420f5729ad3a4d4752fbbfb6e8199f8f010779afabe254262186879b6e0db",
+    "timeoutMs": 30000,
+    "maxBytes": 12582912,
+    "catalog": {
+      "previewPath": "models/mpfb-casual-mobile/preview-front.png",
+      "badge": "移动优化",
+      "description": "短袖上衣、长裤和鞋履；贴图上限 1024，适合作为网页端优先比较版本。",
+      "qualityTier": "mobile",
+      "recommended": true,
+      "warning": "已通过技术门禁，但课程姿势、绳路和医学审核仍未完成。",
+      "sizeBytes": 12180892
+    }
+  },
+  {
+    "id": "mpfb-adult-female-casual-original-v1",
+    "displayName": "MPFB 成年女性 · 休闲装原始质量",
+    "kind": "glb",
+    "sourceUrl": "https://static.makehumancommunity.org/mpfb.html",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "license": "CC0 1.0",
+    "attribution": "Generated with Blender 4.5 LTS + MPFB from MakeHuman CC0 system assets",
+    "status": "technical-review",
+    "adultPresentation": true,
+    "allowRemote": false,
+    "boneMap": {
+      "pelvis": "pelvis",
+      "spineLower": "spine_01",
+      "spineMiddle": "spine_02",
+      "spineUpper": "spine_03",
+      "neck": "neck_01",
+      "head": "head",
+      "leftShoulder": "clavicle_l",
+      "leftUpperArm": "upperarm_l",
+      "leftForearm": "lowerarm_l",
+      "leftHand": "hand_l",
+      "rightShoulder": "clavicle_r",
+      "rightUpperArm": "upperarm_r",
+      "rightForearm": "lowerarm_r",
+      "rightHand": "hand_r",
+      "leftThigh": "thigh_l",
+      "leftCalf": "calf_l",
+      "leftFoot": "foot_l",
+      "rightThigh": "thigh_r",
+      "rightCalf": "calf_r",
+      "rightFoot": "foot_r"
+    },
+    "transform": {
+      "position": [
+        0,
+        -0.22,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.8,
+        1.8,
+        1.8
+      ]
+    },
+    "path": "models/mpfb-casual-original/model.glb",
+    "presentation": "neutral-fully-clothed",
+    "sha256": "d14798fbccc34edaaf4d05e1f74c09c740177c52bf6ddff698349fa83549bad2",
+    "timeoutMs": 50000,
+    "maxBytes": 33554432,
+    "catalog": {
+      "previewPath": "models/mpfb-casual-original/preview-front.png",
+      "badge": "原始质量",
+      "description": "短袖上衣、长裤和鞋履；保留最高 4096 贴图，细节更多但首次下载较慢。",
+      "qualityTier": "full",
+      "recommended": false,
+      "warning": "约 24.2 MB，移动网络首次加载时间可能明显增加。",
+      "sizeBytes": 25401868
+    }
+  },
+  {
+    "id": "mpfb-adult-female-sports-original-v1",
+    "displayName": "MPFB 成年女性 · 运动装原始质量",
+    "kind": "glb",
+    "sourceUrl": "https://static.makehumancommunity.org/mpfb.html",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "license": "CC0 1.0",
+    "attribution": "Generated with Blender 4.5 LTS + MPFB from MakeHuman CC0 system assets",
+    "status": "technical-review",
+    "adultPresentation": true,
+    "allowRemote": false,
+    "boneMap": {
+      "pelvis": "pelvis",
+      "spineLower": "spine_01",
+      "spineMiddle": "spine_02",
+      "spineUpper": "spine_03",
+      "neck": "neck_01",
+      "head": "head",
+      "leftShoulder": "clavicle_l",
+      "leftUpperArm": "upperarm_l",
+      "leftForearm": "lowerarm_l",
+      "leftHand": "hand_l",
+      "rightShoulder": "clavicle_r",
+      "rightUpperArm": "upperarm_r",
+      "rightForearm": "lowerarm_r",
+      "rightHand": "hand_r",
+      "leftThigh": "thigh_l",
+      "leftCalf": "calf_l",
+      "leftFoot": "foot_l",
+      "rightThigh": "thigh_r",
+      "rightCalf": "calf_r",
+      "rightFoot": "foot_r"
+    },
+    "transform": {
+      "position": [
+        0,
+        -0.22,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.8,
+        1.8,
+        1.8
+      ]
+    },
+    "path": "models/mpfb-sports-original/model.glb",
+    "presentation": "neutral-sportswear-midriff",
+    "sha256": "93970e5d2e1e8ea90d0681e0f731359684fb3b0859aa488214b6c5816312f762",
+    "timeoutMs": 40000,
+    "maxBytes": 25165824,
+    "catalog": {
+      "previewPath": "models/mpfb-sports-original/preview-front.png",
+      "badge": "运动装",
+      "description": "短款运动上衣、紧身长裤和鞋履；按你的要求保留，便于直接比较体型与绳路可见性。",
+      "qualityTier": "full",
+      "recommended": false,
+      "warning": "腹部露出；这是明确保留的技术候选，不作为“完整着装”正式发布资产。",
+      "sizeBytes": 18566844
+    }
+  },
+  {
+    "id": "khronos-rigged-figure-qa-v1",
+    "displayName": "Khronos RiggedFigure · 技术 QA",
+    "kind": "glb",
+    "path": "models/rigged-figure-qa/RiggedFigure.glb",
+    "sourceUrl": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/RiggedFigure",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "license": "CC BY 4.0",
+    "attribution": "© 2017 Cesium; distributed by Khronos glTF Sample Assets",
+    "status": "technical-review",
+    "adultPresentation": true,
+    "presentation": "neutral-fully-clothed",
+    "allowRemote": false,
+    "boneMap": {},
+    "sha256": "d6be85417d3e256861ee733eea6916093a7af7c79c16366181fd8abcaeb38cf5",
+    "transform": {
+      "position": [
+        0,
+        -0.55,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "timeoutMs": 12000,
+    "maxBytes": 8388608,
+    "catalog": {
+      "badge": "技术 QA",
+      "description": "极小型骨骼 GLB，仅用于验证下载、哈希、骨架、材质、诊断与错误回退。",
+      "qualityTier": "qa",
+      "recommended": false,
+      "warning": "不是课程示范人物，也不用于评价写实外观。",
+      "sizeBytes": 50116
+    }
+  }
+]
