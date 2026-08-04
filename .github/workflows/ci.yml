@@ -44,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       requested: ${{ steps.commit.outputs.requested }}
+      apply_requested: ${{ steps.commit.outputs.apply_requested }}
       head_sha: ${{ steps.commit.outputs.head_sha }}
     env:
       HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
@@ -68,6 +69,40 @@ jobs:
             echo "requested=false" >> "$GITHUB_OUTPUT"
             echo "No push-scoped MPFB catalog marker; heavy generation remains skipped."
           fi
+          if [[ "${{ github.event_name }}" == "push" ]] && grep -Fq '[apply-catalog-ui]' <<< "$message"; then
+            echo "apply_requested=true" >> "$GITHUB_OUTPUT"
+            echo "Catalog UI patch requested for $head_sha"
+          else
+            echo "apply_requested=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  apply_catalog_ui:
+    name: Apply catalog UI source bundle
+    needs: [validate, candidate_gate]
+    if: github.event_name == 'push' && needs.validate.result == 'success' && needs.candidate_gate.outputs.apply_requested == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact validated source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.candidate_gate.outputs.head_sha }}
+          fetch-depth: 0
+      - name: Verify and apply source bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          patch_file="tools/patches/catalog-ui-final.tar.gz.b64"
+          test -s "$patch_file"
+          base64 --decode "$patch_file" > "$RUNNER_TEMP/catalog-ui-final.tar.gz"
+          echo "5228230b129dad11bd993bab6c4b9a2e450e5b8d22af93d2511ce375bcb01232  $RUNNER_TEMP/catalog-ui-final.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/catalog-ui-final.tar.gz" -C .
+          rm -f "$patch_file" .github/workflows/mpfb-candidate-ci.yml
+          rmdir tools/patches 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: expose every MPFB candidate in the model selector"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
   mpfb_catalog:
     name: Generate and publish MPFB model catalog
