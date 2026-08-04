@@ -6,7 +6,7 @@ on:
     branches: [main, 'agent/**']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
@@ -44,7 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       requested: ${{ steps.commit.outputs.requested }}
-      source_requested: ${{ steps.commit.outputs.source_requested }}
       head_sha: ${{ steps.commit.outputs.head_sha }}
     env:
       HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
@@ -54,7 +53,7 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           fetch-depth: 1
-      - name: Inspect trigger markers
+      - name: Inspect candidate trigger marker
         id: commit
         shell: bash
         run: |
@@ -62,55 +61,20 @@ jobs:
           message="$(git log -1 --pretty=%B)"
           head_sha="$(git rev-parse HEAD)"
           echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
-          if grep -Fq '[mpfb-candidate]' <<< "$message"; then
+          if [[ "${{ github.event_name }}" == "push" ]] && grep -Fq '[mpfb-catalog]' <<< "$message"; then
             echo "requested=true" >> "$GITHUB_OUTPUT"
-            echo "MPFB candidate generation requested for $head_sha"
+            echo "MPFB catalog generation requested for $head_sha"
           else
             echo "requested=false" >> "$GITHUB_OUTPUT"
-            echo "No MPFB marker; heavy generation remains skipped."
-          fi
-          if grep -Fq '[source-export]' <<< "$message"; then
-            echo "source_requested=true" >> "$GITHUB_OUTPUT"
-            echo "Source snapshot requested for $head_sha"
-          else
-            echo "source_requested=false" >> "$GITHUB_OUTPUT"
+            echo "No push-scoped MPFB catalog marker; heavy generation remains skipped."
           fi
 
-  source_snapshot:
-    name: Export source snapshot
+  mpfb_catalog:
+    name: Generate and publish MPFB model catalog
     needs: [validate, candidate_gate]
-    if: needs.validate.result == 'success' && needs.candidate_gate.outputs.source_requested == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out exact validated source
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.candidate_gate.outputs.head_sha }}
-      - name: Create source archive
-        shell: bash
-        run: |
-          set -euo pipefail
-          tar \
-            --exclude=.git \
-            --exclude=node_modules \
-            --exclude=dist \
-            --exclude=test-results \
-            --exclude=playwright-report \
-            -czf "$RUNNER_TEMP/shibari-source.tar.gz" .
-      - name: Upload source archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: shibari-source-${{ github.run_id }}
-          path: ${{ runner.temp }}/shibari-source.tar.gz
-          retention-days: 1
-          compression-level: 0
-
-  mpfb_candidate:
-    name: Generate MPFB technical candidate
-    needs: [validate, candidate_gate]
-    if: needs.validate.result == 'success' && needs.candidate_gate.outputs.requested == 'true'
+    if: github.event_name == 'push' && needs.validate.result == 'success' && needs.candidate_gate.outputs.requested == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       BLENDER_VERSION: 4.5.12
     steps:
@@ -118,6 +82,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ needs.candidate_gate.outputs.head_sha }}
+          fetch-depth: 0
       - name: Record pipeline revision
         run: git rev-parse HEAD | tee "$RUNNER_TEMP/pipeline-sha.txt"
       - name: Check runner capacity
@@ -131,27 +96,57 @@ jobs:
             libegl1 libgl1 libglx-mesa0 libxi6 libxkbcommon0 libxrender1 \
             libxrandr2 libxfixes3 libxinerama1 libxcursor1 libxxf86vm1 \
             libwayland-client0 libwayland-egl1 mesa-utils xz-utils
-      - name: Generate MPFB candidate
+      - name: Generate MPFB catalog
         run: bash tools/blender/run_candidate_pipeline.sh
-      - name: Validate candidate outputs
-        if: success()
+      - name: Validate catalog outputs
         shell: bash
         run: |
           set -euo pipefail
-          output_dir="$RUNNER_TEMP/shibari-mpfb/output"
-          test -s "$output_dir/shibari-adult-female-candidate.glb"
-          test -s "$output_dir/candidate-report.json"
-          for view in front back left right; do
-            test -s "$output_dir/preview-${view}.png"
+          catalog="$RUNNER_TEMP/shibari-mpfb/output/catalog"
+          test -s "$catalog/catalog-summary.json"
+          for slug in mpfb-sports-original mpfb-casual-original mpfb-casual-mobile; do
+            test -s "$catalog/$slug/model.glb"
+            test -s "$catalog/$slug/SHA256.txt"
+            test -s "$catalog/$slug/candidate-report.json"
+            test -s "$catalog/$slug/glb-audit.json"
+            test -s "$catalog/$slug/preview-front.png"
           done
-          cat "$output_dir/candidate-report.json"
-          cat "$output_dir/SHA256.txt"
-          du -ah "$output_dir" | sort -h | tail -30
-      - name: Upload candidate and diagnostics
+          cat "$catalog/catalog-summary.json"
+          du -ah "$catalog" | sort -h | tail -40
+      - name: Commit generated model catalog to source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          catalog="$RUNNER_TEMP/shibari-mpfb/output/catalog"
+          for slug in mpfb-sports-original mpfb-casual-original mpfb-casual-mobile; do
+            destination="public/models/$slug"
+            rm -rf "$destination"
+            mkdir -p "$destination"
+            cp "$catalog/$slug/model.glb" "$destination/model.glb"
+            cp "$catalog/$slug/SOURCE.md" "$destination/SOURCE.md"
+            cp "$catalog/$slug/LICENSE.txt" "$destination/LICENSE.txt"
+            cp "$catalog/$slug/SHA256.txt" "$destination/SHA256.txt"
+            cp "$catalog/$slug/candidate-report.json" "$destination/candidate-report.json"
+            cp "$catalog/$slug/glb-audit.json" "$destination/glb-audit.json"
+            cp "$catalog/$slug/catalog-entry.json" "$destination/catalog-entry.json"
+            cp "$catalog/$slug"/preview-*.png "$destination/"
+          done
+          cp "$catalog/catalog-summary.json" public/models/mpfb-catalog-summary.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/models/mpfb-* public/models/mpfb-catalog-summary.json
+          if git diff --cached --quiet; then
+            echo "Generated catalog is unchanged; no commit required."
+            exit 0
+          fi
+          git commit -m "chore(models): publish selectable MPFB catalog [skip-candidate]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Upload catalog and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mpfb-technical-candidate-${{ github.run_id }}
+          name: mpfb-model-catalog-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/shibari-mpfb/output
             ${{ runner.temp }}/pipeline-sha.txt
