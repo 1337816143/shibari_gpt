@@ -20,10 +20,14 @@ const courseData = {
   modelId: 'procedural-training-model-v0',
   modelAsset: {
     id: 'procedural-training-model-v0',
+    displayName: '课程程序化训练占位模型',
     kind: 'procedural',
     license: 'Project-authored placeholder',
     attribution: 'Shibari Studio procedural training mannequin',
     status: 'placeholder',
+    adultPresentation: true,
+    presentation: 'neutral-fully-clothed',
+    boneMap: {},
   },
   pose: {
     id: 'neutral-arms-forward-v0',

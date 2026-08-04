@@ -39,15 +39,34 @@ describe('App', () => {
     expect(screen.getByRole('img', { name: /简化二维绳路图/ })).toBeInTheDocument();
   });
 
-  it('exposes provenance, release gates and a clearly labelled QA asset switch', () => {
+
+  it('persists the selected model candidate across reloads', () => {
+    const firstRender = render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: '选择 MPFB 成年女性 · 运动装原始质量' }));
+    expect(screen.getByRole('button', { name: '已选择 MPFB 成年女性 · 运动装原始质量' })).toHaveAttribute('aria-pressed', 'true');
+    firstRender.unmount();
+
     render(<App />);
-    expect(screen.getByRole('heading', { name: /看得见资产状态/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '已选择 MPFB 成年女性 · 运动装原始质量' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('exposes provenance, release gates and every selectable model candidate', () => {
+    render(<App />);
+    expect(screen.getByRole('heading', { name: /所有可用候选都保留/ })).toBeInTheDocument();
     expect(screen.getByText(/尚无独立审核记录/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '0/6 项通过' })).toBeInTheDocument();
-    expect(screen.getByText(/门禁由课程与审核数据实时计算/)).toBeInTheDocument();
+    expect(screen.getByText(/正式课程发布仍由独立门禁控制/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /加载技术 QA 模型/ }));
+    expect(screen.getAllByText('MPFB 成年女性 · 休闲装移动版').length).toBeGreaterThan(0);
+    expect(screen.getByText('MPFB 成年女性 · 休闲装原始质量')).toBeInTheDocument();
+    expect(screen.getByText('MPFB 成年女性 · 运动装原始质量')).toBeInTheDocument();
     expect(screen.getByText('Khronos RiggedFigure · 技术 QA')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /返回课程占位模型/ })).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: '已选择 MPFB 成年女性 · 休闲装移动版' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByText(/11\.6 MB/).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: '选择 MPFB 成年女性 · 运动装原始质量' }));
+    expect(screen.getByRole('button', { name: '已选择 MPFB 成年女性 · 运动装原始质量' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/腹部露出；这是明确保留的技术候选/)).toBeInTheDocument();
   });
 });

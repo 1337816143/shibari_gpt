@@ -9,7 +9,8 @@ import { SceneToolbar } from './components/ui/SceneToolbar';
 import { StepDiagram } from './components/ui/StepDiagram';
 import { StepPanel } from './components/ui/StepPanel';
 import { demoCourse } from './data/demoCourse';
-import { riggedFigureQaAsset } from './data/modelAssets';
+import { modelAssetCandidates } from './data/modelAssets';
+import type { ModelCatalogOption } from './data/modelAssets';
 import { useLearningProgress } from './hooks/useLearningProgress';
 import { usePlayback } from './hooks/usePlayback';
 import type { SceneSettings } from './types/scene';
@@ -19,6 +20,16 @@ import './consent-modal.css';
 const StudioScene = lazy(() =>
   import('./components/scene/StudioScene').then((module) => ({ default: module.StudioScene })),
 );
+
+const recommendedCandidateId = modelAssetCandidates.find((option) => option.recommended)?.asset.id;
+const modelSelectionKey = 'shibari-studio:model-selection:v1';
+
+
+function formatModelSize(bytes?: number) {
+  if (bytes === undefined) return '无需下载';
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 const initialSettings: SceneSettings = {
   viewPreset: 'front',
@@ -46,9 +57,26 @@ export function App() {
   const [acknowledged, setAcknowledged] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [studioActivated, setStudioActivated] = useState(false);
-  const [usingQaAsset, setUsingQaAsset] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState(() => {
+    const stored = window.localStorage.getItem(modelSelectionKey);
+    const validIds = new Set([course.modelAsset.id, ...modelAssetCandidates.map((option) => option.asset.id)]);
+    return stored && validIds.has(stored) ? stored : (recommendedCandidateId ?? course.modelAsset.id);
+  });
+  const modelOptions = useMemo<ModelCatalogOption[]>(() => [
+    {
+      asset: { ...course.modelAsset, displayName: '课程程序化训练占位模型' },
+      badge: '即时加载',
+      description: '项目自带的程序化训练人台，不需要下载外部模型，适合快速检查交互与二维回退。',
+      qualityTier: 'placeholder',
+      recommended: false,
+      warning: '外形仅用于工程占位，不代表最终人物质量。',
+    },
+    ...modelAssetCandidates,
+  ], [course.modelAsset]);
+  const activeModelOption = modelOptions.find((option) => option.asset.id === selectedModelId) ?? modelOptions[0];
+  if (!activeModelOption) throw new Error('Model catalog has no options');
+  const activeModelAsset = activeModelOption.asset;
   const step = course.steps[playback.stepIndex] ?? course.steps[0];
-  const activeModelAsset = usingQaAsset ? riggedFigureQaAsset : course.modelAsset;
 
   if (!step) throw new Error('Course has no steps');
 
@@ -64,6 +92,10 @@ export function App() {
   useEffect(() => {
     setLastStepIndex(playback.stepIndex);
   }, [playback.stepIndex, setLastStepIndex]);
+
+  useEffect(() => {
+    window.localStorage.setItem(modelSelectionKey, selectedModelId);
+  }, [selectedModelId]);
 
   const sceneSettings: SceneSettings = settings.autoFollow
     ? { ...settings, viewPreset: step.recommendedView }
@@ -83,17 +115,19 @@ export function App() {
     learning.reset();
     playback.goToStep(0);
     setAcknowledged(false);
-    setUsingQaAsset(false);
+    setSelectedModelId(recommendedCandidateId ?? course.modelAsset.id);
   };
 
-  const toggleQaAsset = () => {
-    setUsingQaAsset((current) => {
-      const next = !current;
-      setNotice(next
-        ? '已选择技术 QA 模型；它只验证 GLB 管线，不代表正式课程人物。'
-        : '已返回课程程序化占位模型。');
-      return next;
-    });
+  const selectModelAsset = (assetId: string) => {
+    const option = modelOptions.find((candidate) => candidate.asset.id === assetId);
+    if (!option) return;
+    setSelectedModelId(assetId);
+    const size = formatModelSize(option.sizeBytes);
+    setNotice(
+      option.asset.kind === 'glb'
+        ? `已选择 ${option.asset.displayName}（${size}）。该模型为技术候选，首次加载需下载并执行 SHA-256 校验。`
+        : '已返回课程程序化训练占位模型。',
+    );
   };
 
   const diagram = (
@@ -254,8 +288,9 @@ export function App() {
         <AssetTransparencyPanel
           course={course}
           activeAsset={activeModelAsset}
-          usingQaAsset={usingQaAsset}
-          onToggleQaAsset={toggleQaAsset}
+          options={modelOptions}
+          activeAssetId={selectedModelId}
+          onSelectAsset={selectModelAsset}
         />
 
         <section id="path" className="content-section">
@@ -277,9 +312,9 @@ export function App() {
         <section id="research" className="content-section research-section">
           <div className="section-heading"><div><span className="eyebrow">研究与资产状态</span><h2>不伪装任何模型或课程的完成度</h2></div></div>
           <div className="research-grid">
-            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查与审核记录 Schema</li><li>GLB 受控下载、超时、体积和 SHA-256 校验</li><li>骨骼安全克隆、模型诊断与模型级失败回退</li><li>资产来源、许可和审核状态展示</li><li>学习记录、锁定依赖、确认后按需加载 3D 和 2D 降级</li></ul></article>
-            <article><h3>生产发布阻塞项</h3><ul><li>最终写实成年女性着装模型</li><li>课程姿势、骨骼权重和人体 landmark 验收</li><li>专业绳师逐步校验绳路</li><li>医学/人体结构安全审核</li><li>GLB 压缩、LOD、纹理压缩和真机性能测试</li></ul></article>
-            <article className="warning-card"><h3>生成工具边界</h3><p>img2threejs 仍不能替代生产级人物重建、拓扑、绑定和权重流程。项目会尝试基于 CC0 MakeHuman/MPFB 资产建立可复现人物管线，但只有通过来源、着装、骨骼、姿势、绳路和性能验收后才会替换默认占位模型。</p></article>
+            <article><h3>已完成</h3><ul><li>参考网站结构与交互分析</li><li>课程、姿势、绳路、安全检查与审核记录 Schema</li><li>GLB 受控下载、超时、体积和 SHA-256 校验</li><li>骨骼安全克隆、模型诊断与模型级失败回退</li><li>MPFB 成年女性模型可复现生成与三候选目录</li><li>原始质量和移动优化版贴图、骨架、体积与四视图审计</li><li>学习记录、确认后按需加载 3D 和 2D 降级</li></ul></article>
+            <article><h3>生产发布阻塞项</h3><ul><li>候选人物在正式课程姿势下的骨骼权重与人体 landmark 验收</li><li>绳路与模型表面的逐步骤对齐和穿模复核</li><li>专业绳师逐步校验绳路</li><li>医学/人体结构安全审核</li><li>更多真机性能测试，以及可选 LOD/KTX2 纹理传输优化</li></ul></article>
+            <article className="warning-card"><h3>候选模型边界</h3><p>运动装、休闲装原始质量和休闲装移动优化版均已保留并可直接选择。它们已经通过来源、许可证、GLB 结构、骨架、哈希和工程性能门禁，但仍是 technical-review 候选，不等于姿势、绳路或医学安全已经获得专业批准。</p></article>
           </div>
         </section>
       </main>

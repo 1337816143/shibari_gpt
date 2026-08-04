@@ -32,6 +32,33 @@ describe('course schema', () => {
     expect(riggedFigureQaAsset.sha256).toMatch(/^[a-f0-9]{64}$/);
   });
 
+
+  it('allows a midriff sportswear asset as a technical candidate but not as an approved course asset', () => {
+    const sportsCandidate = {
+      ...riggedFigureQaAsset,
+      id: 'sports-candidate',
+      displayName: 'Sports candidate',
+      presentation: 'neutral-sportswear-midriff' as const,
+    };
+    expect(modelAssetSchema.safeParse(sportsCandidate).success).toBe(true);
+
+    const reviewedAt = '2026-08-02T16:00:00.000Z';
+    const approvedCourse = {
+      ...demoCourse,
+      modelId: sportsCandidate.id,
+      modelAsset: { ...sportsCandidate, status: 'approved' as const },
+      pose: { ...demoCourse.pose, sourceStatus: 'approved' as const },
+      reviewStatus: 'approved' as const,
+      reviewers: ['Rope reviewer', 'Medical reviewer', 'Model reviewer'],
+      reviewRecords: [
+        { id: 'rope', role: 'rope-technique' as const, reviewer: 'Rope reviewer', status: 'approved' as const, scope: ['course'], reviewedVersion: demoCourse.courseVersion, reviewedAt, notes: 'Approved.' },
+        { id: 'medical', role: 'medical-anatomy' as const, reviewer: 'Medical reviewer', status: 'approved' as const, scope: ['course'], reviewedVersion: demoCourse.courseVersion, reviewedAt, notes: 'Approved.' },
+        { id: 'model', role: 'model-technical' as const, reviewer: 'Model reviewer', status: 'approved' as const, scope: ['model'], reviewedVersion: demoCourse.modelVersion, reviewedAt, notes: 'Approved.' },
+      ],
+    };
+    expect(courseSchema.safeParse(approvedCourse).success).toBe(false);
+  });
+
   it('rejects GLB entries without source, license and transform metadata', () => {
     expect(modelAssetSchema.safeParse({
       id: 'incomplete-glb',

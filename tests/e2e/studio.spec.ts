@@ -53,18 +53,33 @@ test('supports course filtering and the simplified diagram mode', async ({ page 
   await expect(page.getByRole('img', { name: /简化二维绳路图/ })).toBeVisible();
 });
 
-test('loads the committed GLB only after integrity verification', async ({ page }) => {
+test('compares every model tier and loads the mobile MPFB GLB after integrity verification', async ({ page }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: /加载技术 QA 模型/ }).click();
-  await expect(page.getByText('Khronos RiggedFigure · 技术 QA')).toBeVisible();
+
+  const sports = page.getByRole('button', { name: '选择 MPFB 成年女性 · 运动装原始质量' });
+  const casualOriginal = page.getByRole('button', { name: '选择 MPFB 成年女性 · 休闲装原始质量' });
+  await expect(sports).toBeVisible();
+  await expect(casualOriginal).toBeVisible();
+  await expect(page.getByRole('button', { name: '已选择 MPFB 成年女性 · 休闲装移动版' })).toHaveAttribute('aria-pressed', 'true');
+
+  await sports.click();
+  await expect(page.getByRole('button', { name: '已选择 MPFB 成年女性 · 运动装原始质量' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText(/腹部露出；这是明确保留的技术候选/)).toBeVisible();
+
+  await casualOriginal.click();
+  await expect(page.getByRole('button', { name: '已选择 MPFB 成年女性 · 休闲装原始质量' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: '选择 MPFB 成年女性 · 休闲装移动版' }).click();
+  await expect(page.getByRole('button', { name: '已选择 MPFB 成年女性 · 休闲装移动版' })).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('link', { name: '进入 3D 练习室' }).click();
   await page.getByRole('button', { name: '我已了解' }).click();
 
   const diagnostics = page.locator('.model-diagnostics');
-  await expect(diagnostics).toBeVisible({ timeout: 30_000 });
+  await expect(diagnostics).toBeVisible({ timeout: 60_000 });
   await diagnostics.locator('summary').click();
   await expect(diagnostics.getByText('蒙皮网格')).toBeVisible();
   await expect(diagnostics.getByText('骨骼')).toBeVisible();
+  await expect(diagnostics.getByText(/11\.6 MB/)).toBeVisible();
   await expect(page.getByText(/已使用安全占位模型/)).toHaveCount(0);
 });

@@ -1,12 +1,26 @@
-import { BadgeCheck, Box, CheckCircle2, CircleDashed, ExternalLink, FileKey2, FlaskConical, ShieldAlert } from 'lucide-react';
+import {
+  BadgeCheck,
+  Box,
+  CheckCircle2,
+  CircleDashed,
+  ExternalLink,
+  FileKey2,
+  FlaskConical,
+  ImageOff,
+  MonitorUp,
+  ShieldAlert,
+  Smartphone,
+} from 'lucide-react';
+import type { ModelCatalogOption } from '../../data/modelAssets';
 import type { Course, ModelAsset, ReviewRecord } from '../../schemas/course';
 import './asset-transparency.css';
 
 interface AssetTransparencyPanelProps {
   course: Course;
   activeAsset: ModelAsset;
-  usingQaAsset: boolean;
-  onToggleQaAsset: () => void;
+  options: ModelCatalogOption[];
+  activeAssetId: string;
+  onSelectAsset: (assetId: string) => void;
 }
 
 const statusLabels: Record<ModelAsset['status'], string> = {
@@ -14,6 +28,18 @@ const statusLabels: Record<ModelAsset['status'], string> = {
   'technical-review': '技术审核中',
   approved: '资产已验收',
 };
+
+const presentationLabels: Record<ModelAsset['presentation'], string> = {
+  'neutral-fully-clothed': '中性、完整着装',
+  'neutral-sportswear-midriff': '中性运动装（腹部露出）',
+};
+
+const qualityIcons = {
+  placeholder: Box,
+  mobile: Smartphone,
+  full: MonitorUp,
+  qa: FlaskConical,
+} as const;
 
 function hasCurrentApproval(course: Course, role: ReviewRecord['role'], version: string) {
   return course.reviewRecords.some(
@@ -24,7 +50,19 @@ function hasCurrentApproval(course: Course, role: ReviewRecord['role'], version:
   );
 }
 
-export function AssetTransparencyPanel({ course, activeAsset, usingQaAsset, onToggleQaAsset }: AssetTransparencyPanelProps) {
+function formatBytes(bytes?: number) {
+  if (bytes === undefined) return '无需下载';
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+export function AssetTransparencyPanel({
+  course,
+  activeAsset,
+  options,
+  activeAssetId,
+  onSelectAsset,
+}: AssetTransparencyPanelProps) {
   const reviewRecords = course.reviewRecords;
   const releaseGates = [
     { label: '课程人物资产已验收', passed: course.modelAsset.status === 'approved' },
@@ -41,7 +79,7 @@ export function AssetTransparencyPanel({ course, activeAsset, usingQaAsset, onTo
       <header>
         <div>
           <span className="eyebrow">模型来源与审核透明度</span>
-          <h2 id="asset-transparency-title">看得见资产状态，也看得见尚未完成的审核</h2>
+          <h2 id="asset-transparency-title">所有可用候选都保留，由你直接切换比较</h2>
         </div>
         <span className={`asset-status asset-status--${activeAsset.status}`}>{statusLabels[activeAsset.status]}</span>
       </header>
@@ -58,11 +96,11 @@ export function AssetTransparencyPanel({ course, activeAsset, usingQaAsset, onTo
             <div><dt>格式</dt><dd>{activeAsset.kind === 'glb' ? 'GLB 2.0' : '程序化 Three.js'}</dd></div>
             <div><dt>许可证</dt><dd>{activeAsset.license}</dd></div>
             <div><dt>成年人声明</dt><dd>{activeAsset.adultPresentation ? '是' : '否'}</dd></div>
-            <div><dt>呈现规范</dt><dd>中性、完整着装</dd></div>
+            <div><dt>呈现规范</dt><dd>{presentationLabels[activeAsset.presentation]}</dd></div>
             <div><dt>语义骨骼映射</dt><dd>{Object.keys(activeAsset.boneMap).length} 项</dd></div>
             {activeAsset.kind === 'glb' && (
               <>
-                <div><dt>加载预算</dt><dd>{Math.round(activeAsset.maxBytes / 1024 / 1024)} MB</dd></div>
+                <div><dt>加载预算</dt><dd>{formatBytes(activeAsset.maxBytes)}</dd></div>
                 <div><dt>超时</dt><dd>{Math.round(activeAsset.timeoutMs / 1000)} 秒</dd></div>
                 <div><dt>完整性</dt><dd>{activeAsset.sha256 ? 'SHA-256 强校验' : '尚未登记哈希'}</dd></div>
               </>
@@ -81,7 +119,7 @@ export function AssetTransparencyPanel({ course, activeAsset, usingQaAsset, onTo
           <div>
             <span>课程审核记录</span>
             <h3>{reviewRecords.length ? `${reviewRecords.length} 条记录` : '尚无独立审核记录'}</h3>
-            <p>资产通过技术验收，不代表课程内容、绳路或安全文字已经通过审核。</p>
+            <p>模型可被选择和比较，不代表课程内容、绳路或安全文字已经通过审核。</p>
           </div>
           {reviewRecords.length ? (
             <ul className="review-records">
@@ -103,7 +141,7 @@ export function AssetTransparencyPanel({ course, activeAsset, usingQaAsset, onTo
           <div>
             <span>正式发布门禁</span>
             <h3>{passedGateCount}/{releaseGates.length} 项通过</h3>
-            <p>门禁由课程与审核数据实时计算，不能通过修改页面文案绕过。</p>
+            <p>你可以预览全部技术候选；正式课程发布仍由独立门禁控制。</p>
           </div>
           <ul className="release-gates">
             {releaseGates.map((gate) => (
@@ -115,16 +153,53 @@ export function AssetTransparencyPanel({ course, activeAsset, usingQaAsset, onTo
           </ul>
         </article>
 
-        <article className="asset-card asset-card--lab">
-          <FlaskConical size={22} />
-          <div>
-            <span>加载器技术实验室</span>
-            <h3>本地骨骼 GLB 端到端验证</h3>
-            <p>QA 资产只用于验证下载、哈希、骨骼、材质、回退和诊断，不作为课程示范人物。</p>
+        <article className="asset-card asset-card--catalog">
+          <div className="asset-catalog__heading">
+            <FlaskConical size={22} />
+            <div>
+              <span>人物模型选择器</span>
+              <h3>保留原始质量、移动优化版和技术 QA</h3>
+              <p>大文件仍可加载，只是下载更慢。运动装腹部露出会明确标注，但不再从候选中排除。</p>
+            </div>
           </div>
-          <button type="button" onClick={onToggleQaAsset}>
-            {usingQaAsset ? <><BadgeCheck size={17} />返回课程占位模型</> : <><FlaskConical size={17} />加载技术 QA 模型</>}
-          </button>
+          <div className="asset-catalog" role="list" aria-label="可选人物模型">
+            {options.map((option) => {
+              const selected = option.asset.id === activeAssetId;
+              const QualityIcon = qualityIcons[option.qualityTier];
+              return (
+                <article className={`asset-option${selected ? ' is-selected' : ''}`} key={option.asset.id} role="listitem">
+                  <div className="asset-option__preview">
+                    {option.previewUrl ? (
+                      <img src={option.previewUrl} alt={`${option.asset.displayName} 正面预览`} loading="lazy" />
+                    ) : (
+                      <div className="asset-option__placeholder"><ImageOff size={30} /><span>{option.qualityTier === 'placeholder' ? '程序化模型' : '无静态预览'}</span></div>
+                    )}
+                    <span className="asset-option__badge"><QualityIcon size={13} />{option.badge}</span>
+                    {option.recommended && <span className="asset-option__recommended">推荐</span>}
+                  </div>
+                  <div className="asset-option__body">
+                    <h4>{option.asset.displayName}</h4>
+                    <p>{option.description}</p>
+                    <dl>
+                      <div><dt>体积</dt><dd>{formatBytes(option.sizeBytes)}</dd></div>
+                      <div><dt>着装</dt><dd>{presentationLabels[option.asset.presentation]}</dd></div>
+                      <div><dt>状态</dt><dd>{statusLabels[option.asset.status]}</dd></div>
+                    </dl>
+                    {option.warning && <div className="asset-option__warning"><ShieldAlert size={15} />{option.warning}</div>}
+                    <button
+                      type="button"
+                      className={selected ? 'is-selected' : ''}
+                      onClick={() => onSelectAsset(option.asset.id)}
+                      aria-pressed={selected}
+                      aria-label={`${selected ? '已选择' : '选择'} ${option.asset.displayName}`}
+                    >
+                      {selected ? <><BadgeCheck size={17} />当前使用</> : <><Box size={17} />选择此模型</>}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </article>
       </div>
     </section>

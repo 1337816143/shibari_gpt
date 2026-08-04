@@ -99,7 +99,7 @@ const modelAssetBaseSchema = z.object({
   attribution: z.string().min(1),
   status: z.enum(['placeholder', 'technical-review', 'approved']),
   adultPresentation: z.literal(true).default(true),
-  presentation: z.literal('neutral-fully-clothed').default('neutral-fully-clothed'),
+  presentation: z.enum(['neutral-fully-clothed', 'neutral-sportswear-midriff']).default('neutral-fully-clothed'),
   boneMap: z.record(z.string(), z.string().min(1)).default({}),
 });
 
@@ -207,6 +207,13 @@ export const courseSchema = courseObjectSchema.superRefine((course, context) => 
       code: 'custom',
       path: ['modelAsset', 'status'],
       message: 'An approved course requires an approved model asset',
+    });
+  }
+  if (course.modelAsset.presentation !== 'neutral-fully-clothed') {
+    context.addIssue({
+      code: 'custom',
+      path: ['modelAsset', 'presentation'],
+      message: 'An approved course requires a fully clothed neutral presentation',
     });
   }
   if (course.pose.sourceStatus !== 'approved') {

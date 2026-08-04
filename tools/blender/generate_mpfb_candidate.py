@@ -1,10 +1,11 @@
-"""Create an adult female MPFB candidate, export GLB, and render QA views."""
+"""Create a fully clothed adult female MPFB candidate, export GLB, and render QA views."""
 
 from __future__ import annotations
 
 import importlib
 import json
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -55,14 +56,7 @@ def first_asset(asset_service, subdir: str, candidates: list[str], required: boo
 def clear_scene() -> None:
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
-    for datablocks in (
-        bpy.data.meshes,
-        bpy.data.curves,
-        bpy.data.armatures,
-        bpy.data.materials,
-        bpy.data.cameras,
-        bpy.data.lights,
-    ):
+    for datablocks in (bpy.data.meshes, bpy.data.curves, bpy.data.armatures, bpy.data.materials, bpy.data.cameras, bpy.data.lights):
         for datablock in list(datablocks):
             if datablock.users == 0:
                 datablocks.remove(datablock)
@@ -89,7 +83,7 @@ def point_camera(camera: bpy.types.Object, target: Vector) -> None:
     camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
 
 
-def inspect_loaded_textures(max_dimension: int = MAX_TEXTURE_DIMENSION) -> list[dict[str, object]]:
+def optimize_textures(max_dimension: int = MAX_TEXTURE_DIMENSION) -> list[dict[str, object]]:
     report: list[dict[str, object]] = []
     for image in bpy.data.images:
         if image.name in {"Render Result", "Viewer Node"} or not image.has_data:
@@ -97,14 +91,18 @@ def inspect_loaded_textures(max_dimension: int = MAX_TEXTURE_DIMENSION) -> list[
         width, height = int(image.size[0]), int(image.size[1])
         if width <= 0 or height <= 0:
             continue
+        target_width, target_height = width, height
+        if max(width, height) > max_dimension:
+            scale = max_dimension / max(width, height)
+            target_width = max(1, round(width * scale))
+            target_height = max(1, round(height * scale))
+            image.scale(target_width, target_height)
         report.append(
             {
                 "name": image.name,
                 "original": [width, height],
-                "exported": [width, height],
+                "exported": [target_width, target_height],
                 "source": image.source,
-                "maxDimensionPolicy": max_dimension,
-                "stage": "original-export",
             }
         )
     return report
@@ -205,7 +203,7 @@ def write_report(
         },
         "assets": assets,
         "texturePolicy": {
-            "stage": "original-export",
+            "maxDimension": MAX_TEXTURE_DIMENSION,
             "images": texture_report,
         },
         "objectCount": len(objects),
@@ -218,10 +216,7 @@ def write_report(
         "glbBytes": glb_path.stat().st_size,
         "objectTypes": {obj.name: obj.type for obj in objects},
     }
-    (output_dir / "candidate-report.json").write_text(
-        json.dumps(report, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    (output_dir / "candidate-report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def main() -> None:
@@ -300,7 +295,7 @@ def main() -> None:
         human_service.add_mhclo_asset(shoe_path, basemesh, asset_type="Clothes", material_type="GAMEENGINE")
         added_assets.append({"type": "Shoes", "file": shoe_name or "", "path": shoe_path})
 
-    texture_report = inspect_loaded_textures()
+    texture_report = optimize_textures()
 
     export_root = export_service.create_character_copy(basemesh, name_suffix="_export")
     export_basemesh = object_service.find_object_of_type_amongst_nearest_relatives(export_root, "Basemesh")

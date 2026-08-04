@@ -12,20 +12,27 @@
 - 操作手、绳头方向、接触点、风险点和错误绳路对比；
 - 播放、暂停、重播、单步循环、时间轴和多档速度；
 - 课程搜索、分类筛选、本地收藏和版本化学习记录；
-- Three.js 按需加载、GLB 二次分包和二维降级；
-- GLB 体积预算、加载超时、可选 SHA-256、骨骼安全克隆和模型诊断；
-- 本地模型资产清单、来源、许可证、哈希和 GLB 容器静态校验；
-- 资产来源与课程审核状态透明展示；
+- 安全确认前不下载 Three.js、场景代码或人物 GLB；
+- GLB 受控下载、加载超时、体积预算、SHA-256、骨骼安全克隆和模型诊断；
+- 程序化模型、二维分步图和模型级错误回退；
+- 本地模型资产清单、来源、许可证、哈希、骨骼映射和 GLB 容器静态校验；
+- MPFB 三候选模型目录与可视化选择器；
 - 版本绑定的发布门禁：课程、姿势、模型和三类独立审核必须同时通过；
-- 锁定依赖、Vitest、Playwright、只读 GitHub Actions 与 GitHub Pages。
+- 锁定依赖、Vitest、Playwright、GitHub Actions 与 GitHub Pages 精确 SHA 发布验收。
 
-## 默认人物与候选人物
+## 可选人物模型
 
-默认课程仍使用项目自制的完整着装成年人程序化训练模型。它用于验证教学交互，不代表最终视觉质量。
+页面默认选中适合网页交付的休闲装移动版，但所有候选均保留供比较：
 
-仓库包含 Khronos/Cesium `RiggedFigure`，仅用于验证 GLB、骨骼、动画、哈希、诊断和失败回退。它不是正式教学人物。
+| 选项 | 体积 | 贴图上限 | 呈现 | 用途 |
+| --- | ---: | ---: | --- | --- |
+| MPFB 休闲装移动版 | 约 11.6 MiB | 1024 | 短袖上衣、长裤、鞋履 | 默认技术候选 |
+| MPFB 休闲装原始质量 | 约 24.2 MiB | 4096 | 短袖上衣、长裤、鞋履 | 检查原始材质细节 |
+| MPFB 运动装原始质量 | 约 17.7 MiB | 2048 | 短款运动上衣、长裤、鞋履，腹部露出 | 按产品所有者要求保留，用于比较体型和绳路可见性 |
+| Khronos RiggedFigure | 约 49 KiB | 示例资产 | 技术 QA | 验证骨骼、动画、哈希和回退 |
+| 程序化训练人台 | 无下载 | 无贴图 | 工程占位 | 最低成本回退 |
 
-`tools/blender/` 提供 Blender 4.5 LTS + MPFB + MakeHuman CC0 系统资产的可复现候选生成管线。该管线能够生成成年人女性、完整服装、game-engine rig、四视图预览、GLB 和结构报告，但生成结果必须通过人工视觉、姿势、权重、绳路和移动端性能验收后才能登记为课程资产。
+三套 MPFB 模型均由 Blender 4.5 LTS、MPFB 和 MakeHuman CC0 系统资产可复现生成，具有 game-engine rig、四视图、来源、许可证、SHA-256 和独立 GLB 审计报告。它们全部保持 `technical-review`，没有被伪装为正式课程资产。
 
 ## 本地运行
 
@@ -41,14 +48,17 @@ npm run check
 npm run test:e2e
 ```
 
-其中 `npm run verify:models` 会验证已登记模型的：
+其中 `npm run verify:models` 会验证：
 
-- 本地路径与体积预算；
-- SHA-256；
-- GLB 2.0 容器头、JSON 块、场景和节点；
-- `SOURCE.md`、`LICENSE.txt` 与 `SHA256.txt`。
+- 本地路径、实际体积和候选层级预算；
+- SHA-256 与清单记录；
+- GLB 2.0 容器、场景、节点、网格和蒙皮；
+- `boneMap` 中每个实际骨骼是否存在；
+- 预览图、`SOURCE.md`、`LICENSE.txt` 与 `SHA256.txt`；
+- MPFB 候选报告、GLB 审计和目录摘要是否一致；
+- 移动版是否继续满足 12 MiB 与 1024 贴图上限。
 
-## 生成 MPFB 技术候选
+## 生成 MPFB 候选目录
 
 需要可联网的 Linux 环境，并会下载 Blender 和约 267 MB 的 MakeHuman CC0 系统资产：
 
@@ -58,25 +68,28 @@ OUTPUT_DIR=/tmp/shibari-mpfb-output \
 bash tools/blender/run_candidate_pipeline.sh
 ```
 
-输出包括：
+输出目录 `catalog/` 包含三套候选，每套包括：
 
-- `shibari-adult-female-candidate.glb`；
+- `model.glb`；
 - 正、背、左、右四视图 PNG；
 - `candidate-report.json`；
-- 来源、许可证和 SHA-256；
-- 完整生成日志。
+- `glb-audit.json`；
+- `catalog-entry.json`；
+- `SOURCE.md`、`LICENSE.txt` 和 `SHA256.txt`。
 
-生成成功不等于资产审核通过。
+带 `[mpfb-catalog]` 标记的开发分支 push 会在常规 CI 通过后生成目录，并由 GitHub Actions 将审核产物写回同一分支。普通提交不会重复下载 Blender 或模型资产。
 
 ## 部署
 
-仓库配置了 GitHub Pages 工作流，安装方式为 `npm ci`。Pages Source 应设置为 **GitHub Actions**。
+仓库配置了 GitHub Pages 工作流。生产链路只部署已经通过开发 CI 的精确提交 SHA，并在公网再次校验页面、静态资源、模型哈希和部署指纹。
 
 ## 关键文档
 
 - `docs/architecture.md`
+- `docs/completion-status.md`
 - `docs/model-pipeline/phase4-asset-pipeline.md`
 - `docs/model-pipeline/asset-acceptance-checklist.md`
+- `docs/model-pipeline/candidate-catalog.md`
 - `docs/model-pipeline/image2-prompts.md`
 - `docs/model-pipeline/img2threejs-assessment.md`
 - `docs/research/reference-site-analysis.md`
