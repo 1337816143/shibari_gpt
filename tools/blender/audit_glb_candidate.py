@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import struct
 import sys
@@ -86,7 +87,7 @@ def read_glb(path: Path) -> tuple[dict, bytes, int]:
     return json_payload, binary_payload, len(payload)
 
 
-def audit(path: Path) -> dict:
+def audit(path: Path, max_bytes: int, max_texture_dimension: int) -> dict:
     gltf, binary, byte_length = read_glb(path)
     buffer_views = gltf.get("bufferViews", [])
     images = []
@@ -134,19 +135,30 @@ def audit(path: Path) -> dict:
         raise ValueError(f"Candidate has too few meshes: {report['meshCount']}")
     if report["skinCount"] < 1 or report["jointCount"] < 40:
         raise ValueError(f"Candidate rig is incomplete: {report['skinCount']} skins, {report['jointCount']} joints")
-    if report["maxTextureDimension"] > 1024:
-        raise ValueError(f"Texture exceeds 1024 pixels: {report['maxTextureDimension']}")
-    if byte_length >= 12 * 1024 * 1024:
-        raise ValueError(f"Candidate exceeds the 12 MiB mobile budget: {byte_length} bytes")
+    if report["maxTextureDimension"] > max_texture_dimension:
+        raise ValueError(
+            f"Texture exceeds {max_texture_dimension} pixels: {report['maxTextureDimension']}"
+        )
+    if byte_length > max_bytes:
+        raise ValueError(f"Candidate exceeds the {max_bytes}-byte budget: {byte_length} bytes")
     return report
 
 
 def main() -> None:
-    if len(sys.argv) != 3:
-        raise SystemExit("Usage: audit_glb_candidate.py MODEL.glb REPORT.json")
-    model_path = Path(sys.argv[1]).resolve()
-    report_path = Path(sys.argv[2]).resolve()
-    report = audit(model_path)
+    parser = argparse.ArgumentParser(description="Audit a self-contained MPFB GLB candidate")
+    parser.add_argument("model", type=Path)
+    parser.add_argument("report", type=Path)
+    parser.add_argument("--max-bytes", type=int, default=12 * 1024 * 1024)
+    parser.add_argument("--max-texture-dimension", type=int, default=1024)
+    args = parser.parse_args()
+
+    model_path = args.model.resolve()
+    report_path = args.report.resolve()
+    report = audit(model_path, args.max_bytes, args.max_texture_dimension)
+    report["auditBudget"] = {
+        "maxBytes": args.max_bytes,
+        "maxTextureDimension": args.max_texture_dimension,
+    }
     report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
