@@ -1,11 +1,10 @@
-"""Create a fully clothed adult female MPFB candidate, export GLB, and render QA views."""
+"""Create an adult female MPFB candidate, export GLB, and render QA views."""
 
 from __future__ import annotations
 
 import importlib
 import json
 import math
-import os
 import sys
 from pathlib import Path
 
@@ -14,6 +13,19 @@ from mathutils import Vector
 
 
 MAX_TEXTURE_DIMENSION = 1024
+
+WARDROBES = {
+    "sports-original": {
+        "asset": "female_sportsuit01.mhclo",
+        "presentation": "neutral-sportswear-midriff",
+        "description": "short athletic top, leggings, and shoes; abdomen remains visible",
+    },
+    "casual-original": {
+        "asset": "female_casualsuit01.mhclo",
+        "presentation": "neutral-fully-clothed",
+        "description": "short-sleeve shirt, long trousers, and shoes",
+    },
+}
 
 
 def dynamic_import(package_suffix: str, key: str):
@@ -43,7 +55,14 @@ def first_asset(asset_service, subdir: str, candidates: list[str], required: boo
 def clear_scene() -> None:
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
-    for datablocks in (bpy.data.meshes, bpy.data.curves, bpy.data.armatures, bpy.data.materials, bpy.data.cameras, bpy.data.lights):
+    for datablocks in (
+        bpy.data.meshes,
+        bpy.data.curves,
+        bpy.data.armatures,
+        bpy.data.materials,
+        bpy.data.cameras,
+        bpy.data.lights,
+    ):
         for datablock in list(datablocks):
             if datablock.users == 0:
                 datablocks.remove(datablock)
@@ -70,7 +89,7 @@ def point_camera(camera: bpy.types.Object, target: Vector) -> None:
     camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
 
 
-def optimize_textures(max_dimension: int = MAX_TEXTURE_DIMENSION) -> list[dict[str, object]]:
+def inspect_loaded_textures(max_dimension: int = MAX_TEXTURE_DIMENSION) -> list[dict[str, object]]:
     report: list[dict[str, object]] = []
     for image in bpy.data.images:
         if image.name in {"Render Result", "Viewer Node"} or not image.has_data:
@@ -78,18 +97,14 @@ def optimize_textures(max_dimension: int = MAX_TEXTURE_DIMENSION) -> list[dict[s
         width, height = int(image.size[0]), int(image.size[1])
         if width <= 0 or height <= 0:
             continue
-        target_width, target_height = width, height
-        if max(width, height) > max_dimension:
-            scale = max_dimension / max(width, height)
-            target_width = max(1, round(width * scale))
-            target_height = max(1, round(height * scale))
-            image.scale(target_width, target_height)
         report.append(
             {
                 "name": image.name,
                 "original": [width, height],
-                "exported": [target_width, target_height],
+                "exported": [width, height],
                 "source": image.source,
+                "maxDimensionPolicy": max_dimension,
+                "stage": "original-export",
             }
         )
     return report
@@ -169,6 +184,8 @@ def write_report(
     objects: list[bpy.types.Object],
     assets: list[dict[str, str]],
     texture_report: list[dict[str, object]],
+    variant: str,
+    presentation: str,
 ) -> None:
     meshes = [obj for obj in objects if obj.type == "MESH"]
     armatures = [obj for obj in objects if obj.type == "ARMATURE"]
@@ -176,7 +193,8 @@ def write_report(
         "generator": "Blender 4.5 LTS + MPFB",
         "candidateStatus": "technical-review",
         "adultPresentation": True,
-        "presentation": "neutral-fully-clothed",
+        "presentation": presentation,
+        "variant": variant,
         "parameters": {
             "gender": 0.0,
             "age": 0.62,
@@ -187,7 +205,7 @@ def write_report(
         },
         "assets": assets,
         "texturePolicy": {
-            "maxDimension": MAX_TEXTURE_DIMENSION,
+            "stage": "original-export",
             "images": texture_report,
         },
         "objectCount": len(objects),
@@ -200,15 +218,25 @@ def write_report(
         "glbBytes": glb_path.stat().st_size,
         "objectTypes": {obj.name: obj.type for obj in objects},
     }
-    (output_dir / "candidate-report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    (output_dir / "candidate-report.json").write_text(
+        json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 def main() -> None:
     args = script_args()
-    if len(args) != 1:
-        raise SystemExit("Usage: blender -b --python generate_mpfb_candidate.py -- OUTPUT_DIR")
+    if len(args) != 2:
+        raise SystemExit(
+            "Usage: blender -b --python generate_mpfb_candidate.py -- OUTPUT_DIR "
+            "{sports-original|casual-original}"
+        )
 
     output_dir = Path(args[0]).resolve()
+    variant = args[1]
+    wardrobe = WARDROBES.get(variant)
+    if wardrobe is None:
+        raise ValueError(f"Unsupported wardrobe variant: {variant}")
     output_dir.mkdir(parents=True, exist_ok=True)
     glb_path = output_dir / "shibari-adult-female-candidate.glb"
 
@@ -254,7 +282,7 @@ def main() -> None:
         ("Eyelashes", "eyelashes", ["eyelashes01.mhclo"]),
         ("Teeth", "teeth", ["teeth_base.mhclo"]),
         ("Hair", "hair", ["ponytail01.mhclo", "short02.mhclo", "long01.mhclo"]),
-        ("Clothes", "clothes", ["female_casualsuit01.mhclo"]),
+        ("Clothes", "clothes", [wardrobe["asset"]]),
     ]
     added_assets: list[dict[str, str]] = [{"type": "Skin", "file": skin_name or "", "path": skin_path or ""}]
     for asset_type, subdir, candidates in requested_assets:
@@ -272,7 +300,7 @@ def main() -> None:
         human_service.add_mhclo_asset(shoe_path, basemesh, asset_type="Clothes", material_type="GAMEENGINE")
         added_assets.append({"type": "Shoes", "file": shoe_name or "", "path": shoe_path})
 
-    texture_report = optimize_textures()
+    texture_report = inspect_loaded_textures()
 
     export_root = export_service.create_character_copy(basemesh, name_suffix="_export")
     export_basemesh = object_service.find_object_of_type_amongst_nearest_relatives(export_root, "Basemesh")
@@ -301,13 +329,22 @@ def main() -> None:
     if not glb_path.is_file() or glb_path.stat().st_size < 1024:
         raise RuntimeError("GLB export did not produce a valid file")
 
-    write_report(output_dir, glb_path, export_objects, added_assets, texture_report)
+    write_report(
+        output_dir,
+        glb_path,
+        export_objects,
+        added_assets,
+        texture_report,
+        variant,
+        wardrobe["presentation"],
+    )
     (output_dir / "SOURCE.md").write_text(
         "# MPFB adult female candidate\n\n"
         "Generated with Blender 4.5 LTS and MPFB from the MakeHuman system-assets pack.\n"
         "The generated model and MakeHuman core/system assets are CC0.\n"
-        "Clothing asset: female_casualsuit01 (short-sleeve shirt and long trousers).\n"
-        "Textures larger than 1024 pixels are downscaled before GLB export.\n"
+        f"Variant: {variant}.\n"
+        f"Clothing asset: {wardrobe['asset']} ({wardrobe['description']}).\n"
+        "This original-quality candidate retains source texture resolution.\n"
         "Status: technical candidate only; not a reviewed teaching model.\n",
         encoding="utf-8",
     )
