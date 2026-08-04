@@ -57,7 +57,7 @@ jobs:
         with:
           ref: agent/phase-1-3d-poc
           fetch-depth: 0
-      - name: Verify and apply source bundle
+      - name: Verify and apply non-workflow source bundle
         shell: bash
         run: |
           set -euo pipefail
@@ -66,43 +66,18 @@ jobs:
           test "${#patch_parts[@]}" -eq 5
           cat "${patch_parts[@]}" > "$RUNNER_TEMP/catalog-ui-final.tar.gz.b64"
           base64 --decode "$RUNNER_TEMP/catalog-ui-final.tar.gz.b64" > "$RUNNER_TEMP/catalog-ui-final.tar.gz"
-          sha256sum "$RUNNER_TEMP/catalog-ui-final.tar.gz"
+          echo '5228230b129dad11bd993bab6c4b9a2e450e5b8d22af93d2511ce375bcb01232  '"$RUNNER_TEMP/catalog-ui-final.tar.gz" | sha256sum --check
           gzip --test "$RUNNER_TEMP/catalog-ui-final.tar.gz"
 
           mapfile -t members < <(tar -tzf "$RUNNER_TEMP/catalog-ui-final.tar.gz")
           test "${#members[@]}" -eq 23
-          expected=(
-            '.github/workflows/ci.yml'
-            '.github/workflows/pages.yml'
-            'README.md'
-            'docs/architecture.md'
-            'docs/completion-status.md'
-            'docs/model-pipeline/asset-acceptance-checklist.md'
-            'docs/model-pipeline/candidate-catalog.md'
-            'docs/model-pipeline/phase4-asset-pipeline.md'
-            'public/models/README.md'
-            'scripts/verify-model-assets.mjs'
-            'src/App.tsx'
-            'src/components/ui/AssetTransparencyPanel.tsx'
-            'src/components/ui/asset-transparency.css'
-            'src/data/demoCourse.ts'
-            'src/data/model-assets.json'
-            'src/data/modelAssets.ts'
-            'src/schemas/course.ts'
-            'tests/app.test.tsx'
-            'tests/course-schema.test.ts'
-            'tests/e2e/studio.spec.ts'
-            'tools/blender/audit_glb_candidate.py'
-            'tools/blender/generate_mpfb_candidate.py'
-            'tools/blender/run_candidate_pipeline.sh'
-          )
-          printf '%s\n' "${members[@]}" | sort > "$RUNNER_TEMP/actual-members.txt"
-          printf '%s\n' "${expected[@]}" | sort > "$RUNNER_TEMP/expected-members.txt"
-          diff -u "$RUNNER_TEMP/expected-members.txt" "$RUNNER_TEMP/actual-members.txt"
-
           tar -xzf "$RUNNER_TEMP/catalog-ui-final.tar.gz" -C .
-          rm -f tools/patches/catalog-ui-final.tar.gz.b64.part-* .github/workflows/mpfb-candidate-ci.yml
+
+          git restore --source=HEAD -- .github/workflows/ci.yml .github/workflows/pages.yml
+          git restore --source=HEAD -- .github/workflows/mpfb-candidate-ci.yml 2>/dev/null || true
+          rm -f tools/patches/catalog-ui-final.tar.gz.b64.part-*
           rmdir tools/patches 2>/dev/null || true
+
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
