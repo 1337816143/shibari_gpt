@@ -13,8 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -27,59 +25,131 @@ jobs:
       - run: npm run build
       - run: npm run verify:bundle
 
-  gate:
+  e2e:
+    needs: validate
     runs-on: ubuntu-latest
-    outputs:
-      apply_requested: ${{ steps.marker.outputs.apply_requested }}
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 1
-      - id: marker
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git log -1 --pretty=%B | grep -Fq '[apply-catalog-ui]'; then
-            echo 'apply_requested=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'apply_requested=false' >> "$GITHUB_OUTPUT"
-          fi
+          node-version: 22
+          package-manager-cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run verify:bundle
+      - run: npm run test:e2e
 
-  apply_catalog_ui:
-    name: Apply catalog UI source bundle
-    needs: [validate, gate]
-    if: needs.validate.result == 'success' && needs.gate.outputs.apply_requested == 'true'
+  candidate_gate:
     runs-on: ubuntu-latest
+    outputs:
+      requested: ${{ steps.commit.outputs.requested }}
+      head_sha: ${{ steps.commit.outputs.head_sha }}
+    env:
+      HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
-      - name: Check out writable development branch
+      - name: Check out exact source revision
         uses: actions/checkout@v6
         with:
-          ref: agent/phase-1-3d-poc
-          fetch-depth: 0
-      - name: Verify and apply non-workflow source bundle
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: 1
+      - name: Inspect candidate trigger marker
+        id: commit
         shell: bash
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          patch_parts=(tools/patches/catalog-ui-final.tar.gz.b64.part-*)
-          test "${#patch_parts[@]}" -eq 5
-          cat "${patch_parts[@]}" > "$RUNNER_TEMP/catalog-ui-final.tar.gz.b64"
-          base64 --decode "$RUNNER_TEMP/catalog-ui-final.tar.gz.b64" > "$RUNNER_TEMP/catalog-ui-final.tar.gz"
-          echo '5228230b129dad11bd993bab6c4b9a2e450e5b8d22af93d2511ce375bcb01232  '"$RUNNER_TEMP/catalog-ui-final.tar.gz" | sha256sum --check
-          gzip --test "$RUNNER_TEMP/catalog-ui-final.tar.gz"
+          message="$(git log -1 --pretty=%B)"
+          head_sha="$(git rev-parse HEAD)"
+          echo "head_sha=$head_sha" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == "push" ]] && grep -Fq '[mpfb-catalog]' <<< "$message"; then
+            echo "requested=true" >> "$GITHUB_OUTPUT"
+            echo "MPFB catalog generation requested for $head_sha"
+          else
+            echo "requested=false" >> "$GITHUB_OUTPUT"
+            echo "No push-scoped MPFB catalog marker; heavy generation remains skipped."
+          fi
 
-          mapfile -t members < <(tar -tzf "$RUNNER_TEMP/catalog-ui-final.tar.gz")
-          test "${#members[@]}" -eq 23
-          tar -xzf "$RUNNER_TEMP/catalog-ui-final.tar.gz" -C .
+  mpfb_catalog:
+    name: Generate and publish MPFB model catalog
+    needs: [validate, candidate_gate]
+    if: github.event_name == 'push' && needs.validate.result == 'success' && needs.candidate_gate.outputs.requested == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      BLENDER_VERSION: 4.5.12
+    steps:
+      - name: Check out exact validated source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.candidate_gate.outputs.head_sha }}
+          fetch-depth: 0
+      - name: Record pipeline revision
+        run: git rev-parse HEAD | tee "$RUNNER_TEMP/pipeline-sha.txt"
+      - name: Check runner capacity
+        run: |
+          df -h
+          free -h
+      - name: Install headless rendering dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libegl1 libgl1 libglx-mesa0 libxi6 libxkbcommon0 libxrender1 \
+            libxrandr2 libxfixes3 libxinerama1 libxcursor1 libxxf86vm1 \
+            libwayland-client0 libwayland-egl1 mesa-utils xz-utils
+      - name: Generate MPFB catalog
+        run: bash tools/blender/run_candidate_pipeline.sh
+      - name: Validate catalog outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          catalog="$RUNNER_TEMP/shibari-mpfb/output/catalog"
+          test -s "$catalog/catalog-summary.json"
+          for slug in mpfb-sports-original mpfb-casual-original mpfb-casual-mobile; do
+            test -s "$catalog/$slug/model.glb"
+            test -s "$catalog/$slug/SHA256.txt"
+            test -s "$catalog/$slug/candidate-report.json"
+            test -s "$catalog/$slug/glb-audit.json"
+            test -s "$catalog/$slug/preview-front.png"
+          done
+          cat "$catalog/catalog-summary.json"
+          du -ah "$catalog" | sort -h | tail -40
+      - name: Commit generated model catalog to source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          catalog="$RUNNER_TEMP/shibari-mpfb/output/catalog"
+          for slug in mpfb-sports-original mpfb-casual-original mpfb-sports-original; do
+            destination="public/models/$slug"
+            rm -rf "$destination"
+            mkdir -p "$destination"
+            cp "$catalog/$slug/model.glb" "$destination/model.glb"
+            cp "$catalog/$slug/SOURCE.md" "$destination/SOURCE.md"
+            cp "$catalog/$slug/LICENSE.txt" "$destination/LICENSE.txt"
+            cp "$catalog/$slug/SHA256.txt" "$destination/SHA256.txt"
+            cp "$catalog/$slug/candidate-report.json" "$destination/candidate-report.json"
+            cp "$catalog/$slug/glb-audit.json" "$destination/glb-audit.json"
+            cp "$catalog/$slug/catalog-entry.json" "$destination/catalog-entry.json"
+            cp "$catalog/$slug"/preview-*.png "$destination/"
+          done
+          cp "$catalog/catalog-summary.json" public/models/mpfb-catalog-summary.json
 
-          git restore --source=HEAD -- .github/workflows/ci.yml .github/workflows/pages.yml
-          git restore --source=HEAD -- .github/workflows/mpfb-candidate-ci.yml 2>/dev/null || true
-          rm -f tools/patches/catalog-ui-final.tar.gz.b64.part-*
-          rmdir tools/patches 2>/dev/null || true
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'feat: expose every MPFB candidate in the model selector'
-          git push origin HEAD:agent/phase-1-3d-poc
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/models/mpfb-* public/models/mpfb-catalog-summary.json
+          if git diff --cached --quiet; then
+            echo "Generated catalog is unchanged; no commit required."
+            exit 0
+          fi
+          git commit -m "chore(models): publish selectable MPFB catalog [skip-candidate]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Upload catalog and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mpfb-model-catalog-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/shibari-mpfb/output
+            ${{ runner.temp }}/pipeline-sha.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
