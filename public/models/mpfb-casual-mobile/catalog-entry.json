@@ -1,0 +1,9 @@
+{
+  "slug": "mpfb-casual-mobile",
+  "glbBytes": 12180892,
+  "sha256": "be4420f5729ad3a4d4752fbbfb6e8199f8f010779afabe254262186879b6e0db",
+  "presentation": "neutral-fully-clothed",
+  "meshCount": 8,
+  "jointCount": 53,
+  "maxTextureDimension": 1024
+}

@@ -1,0 +1,100 @@
+{
+  "glbBytes": 12180892,
+  "sceneCount": 1,
+  "nodeCount": 62,
+  "meshCount": 8,
+  "skinCount": 1,
+  "jointCount": 53,
+  "animationCount": 0,
+  "materialCount": 8,
+  "textureCount": 10,
+  "imageCount": 10,
+  "embeddedImageBytes": 8622287,
+  "maxTextureDimension": 1024,
+  "images": [
+    {
+      "index": 0,
+      "name": "01-eyebrow001",
+      "mimeType": "image/png",
+      "bytes": 100186,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "index": 1,
+      "name": "02-eyelashes01",
+      "mimeType": "image/png",
+      "bytes": 111903,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "index": 2,
+      "name": "04-female_casualsuit01_normal",
+      "mimeType": "image/png",
+      "bytes": 539940,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 3,
+      "name": "03-female_casualsuit01_diffuse",
+      "mimeType": "image/png",
+      "bytes": 1014495,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 4,
+      "name": "00-brown_eye",
+      "mimeType": "image/png",
+      "bytes": 816106,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 5,
+      "name": "06-ponytail01_diffuse",
+      "mimeType": "image/png",
+      "bytes": 1378946,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 6,
+      "name": "08-shoes01_normal",
+      "mimeType": "image/png",
+      "bytes": 1106828,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 7,
+      "name": "07-shoes01_diffuse",
+      "mimeType": "image/png",
+      "bytes": 1438984,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 8,
+      "name": "09-teeth",
+      "mimeType": "image/png",
+      "bytes": 837272,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 9,
+      "name": "05-middleage_lightskinned_female_diffuse",
+      "mimeType": "image/png",
+      "bytes": 1277627,
+      "width": 1024,
+      "height": 1024
+    }
+  ],
+  "auditBudget": {
+    "maxBytes": 12582912,
+    "maxTextureDimension": 1024
+  }
+}

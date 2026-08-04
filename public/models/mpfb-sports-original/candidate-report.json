@@ -1,0 +1,80 @@
+{
+  "generator": "Blender 4.5 LTS + MPFB",
+  "candidateStatus": "technical-review",
+  "adultPresentation": true,
+  "presentation": "neutral-sportswear-midriff",
+  "variant": "sports-original",
+  "parameters": {
+    "gender": 0.0,
+    "age": 0.62,
+    "muscle": 0.46,
+    "weight": 0.5,
+    "height": 0.53,
+    "proportions": 0.44
+  },
+  "assets": [
+    {
+      "type": "Skin",
+      "file": "middleage_caucasian_female.mhmat",
+      "path": "/home/runner/.config/blender/4.5/extensions/.user/blender_org/mpfb/data/skins/middleage_caucasian_female/middleage_caucasian_female.mhmat"
+    },
+    {
+      "type": "Eyes",
+      "file": "low-poly.mhclo",
+      "path": "/home/runner/.config/blender/4.5/extensions/.user/blender_org/mpfb/data/eyes/low-poly/low-poly.mhclo"
+    },
+    {
+      "type": "Eyebrows",
+      "file": "eyebrow001.mhclo",
+      "path": "/home/runner/.config/blender/4.5/extensions/.user/blender_org/mpfb/data/eyebrows/eyebrow001/eyebrow001.mhclo"
+    },
+    {
+      "type": "Eyelashes",
+      "file": "eyelashes01.mhclo",
+      "path": "/home/runner/.config/blender/4.5/extensions/.user/blender_org/mpfb/data/eyelashes/eyelashes01/eyelashes01.mhclo"
+    },
+    {
+      "type": "Teeth",
+      "file": "teeth_base.mhclo",
+      "path": "/home/runner/.config/blender/4.5/extensions/.user/blender_org/mpfb/data/teeth/teeth_base/teeth_base.mhclo"
+    },
+    {
+      "type": "Hair",
+      "file": "ponytail01.mhclo",
+      "path": "/home/runner/.config/blender/4.5/extensions/.user/blender_org/mpfb/data/hair/ponytail01/ponytail01.mhclo"
+    },
+    {
+      "type": "Clothes",
+      "file": "female_sportsuit01.mhclo",
+      "path": "/home/runner/.config/blender/4.5/extensions/.user/blender_org/mpfb/data/clothes/female_sportsuit01/female_sportsuit01.mhclo"
+    },
+    {
+      "type": "Shoes",
+      "file": "shoes01.mhclo",
+      "path": "/home/runner/.config/blender/4.5/extensions/.user/blender_org/mpfb/data/clothes/shoes01/shoes01.mhclo"
+    }
+  ],
+  "texturePolicy": {
+    "stage": "original-export",
+    "images": []
+  },
+  "objectCount": 9,
+  "meshCount": 8,
+  "armatureCount": 1,
+  "vertexCount": 20943,
+  "polygonCount": 19242,
+  "materialCount": 8,
+  "boneCount": 53,
+  "glbBytes": 18566844,
+  "objectTypes": {
+    "ShibariAdultFemaleCandidate.rig_export": "ARMATURE",
+    "ShibariAdultFemaleCandidate.eyebrow001_export": "MESH",
+    "ShibariAdultFemaleCandidate.eyelashes01_export": "MESH",
+    "ShibariAdultFemaleCandidate.female_sportsuit01_export": "MESH",
+    "ShibariAdultFemaleCandidate.low-poly_export": "MESH",
+    "ShibariAdultFemaleCandidate.ponytail01_export": "MESH",
+    "ShibariAdultFemaleCandidate.shoes01_export": "MESH",
+    "ShibariAdultFemaleCandidate.teeth_base_export": "MESH",
+    "ShibariAdultFemaleCandidate_export": "MESH"
+  }
+}

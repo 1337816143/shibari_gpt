@@ -1,0 +1,100 @@
+{
+  "glbBytes": 25401868,
+  "sceneCount": 1,
+  "nodeCount": 62,
+  "meshCount": 8,
+  "skinCount": 1,
+  "jointCount": 53,
+  "animationCount": 0,
+  "materialCount": 8,
+  "textureCount": 10,
+  "imageCount": 10,
+  "embeddedImageBytes": 21841629,
+  "maxTextureDimension": 4096,
+  "images": [
+    {
+      "index": 0,
+      "name": "eyebrow001",
+      "mimeType": "image/png",
+      "bytes": 89619,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "index": 1,
+      "name": "eyelashes01",
+      "mimeType": "image/png",
+      "bytes": 91600,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "index": 2,
+      "name": "female_casualsuit01_normal",
+      "mimeType": "image/png",
+      "bytes": 5744103,
+      "width": 4096,
+      "height": 4096
+    },
+    {
+      "index": 3,
+      "name": "female_casualsuit01_diffuse",
+      "mimeType": "image/png",
+      "bytes": 3019656,
+      "width": 2048,
+      "height": 2048
+    },
+    {
+      "index": 4,
+      "name": "brown_eye",
+      "mimeType": "image/png",
+      "bytes": 610817,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 5,
+      "name": "ponytail01_diffuse",
+      "mimeType": "image/png",
+      "bytes": 3910782,
+      "width": 2048,
+      "height": 2048
+    },
+    {
+      "index": 6,
+      "name": "shoes01_normal",
+      "mimeType": "image/png",
+      "bytes": 875473,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 7,
+      "name": "shoes01_diffuse",
+      "mimeType": "image/png",
+      "bytes": 1335772,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "index": 8,
+      "name": "teeth",
+      "mimeType": "image/png",
+      "bytes": 1799930,
+      "width": 2048,
+      "height": 2048
+    },
+    {
+      "index": 9,
+      "name": "middleage_lightskinned_female_diffuse",
+      "mimeType": "image/png",
+      "bytes": 4363877,
+      "width": 2048,
+      "height": 2048
+    }
+  ],
+  "auditBudget": {
+    "maxBytes": 33554432,
+    "maxTextureDimension": 4096
+  }
+}
