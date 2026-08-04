@@ -106,6 +106,7 @@ validate_variant() {
   local max_bytes="$2"
   local expected_presentation="$3"
   local expected_clothing="$4"
+  local max_texture_dimension="$5"
   local destination="$CATALOG_DIR/$slug"
 
   test -s "$destination/model.glb"
@@ -120,6 +121,8 @@ validate_variant() {
   python tools/blender/audit_glb_candidate.py \
     "$destination/model.glb" \
     "$destination/glb-audit.json" \
+    --max-bytes "$max_bytes" \
+    --max-texture-dimension "$max_texture_dimension" \
     | tee "$DIAGNOSTICS_DIR/audit-${slug}.log"
 
   VARIANT_DIR="$destination" \
@@ -164,9 +167,9 @@ print(json.dumps(summary, indent=2, ensure_ascii=False))
 PY
 }
 
-validate_variant "mpfb-sports-original" $((24 * 1024 * 1024)) "neutral-sportswear-midriff" "female_sportsuit01.mhclo"
-validate_variant "mpfb-casual-original" $((32 * 1024 * 1024)) "neutral-fully-clothed" "female_casualsuit01.mhclo"
-validate_variant "mpfb-casual-mobile" $((12 * 1024 * 1024)) "neutral-fully-clothed" "female_casualsuit01.mhclo"
+validate_variant "mpfb-sports-original" $((24 * 1024 * 1024)) "neutral-sportswear-midriff" "female_sportsuit01.mhclo" 4096
+validate_variant "mpfb-casual-original" $((32 * 1024 * 1024)) "neutral-fully-clothed" "female_casualsuit01.mhclo" 4096
+validate_variant "mpfb-casual-mobile" $((12 * 1024 * 1024)) "neutral-fully-clothed" "female_casualsuit01.mhclo" 1024
 
 python - <<'PY'
 import json
