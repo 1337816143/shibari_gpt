@@ -62,6 +62,12 @@ jobs:
           test -s dist/index.html
           test -s dist/404.html
           test -s dist/models/rigged-figure-qa/RiggedFigure.glb
+          for slug in mpfb-casual-mobile mpfb-casual-original mpfb-sports-original; do
+            test -s "dist/models/${slug}/model.glb"
+            test -s "dist/models/${slug}/preview-front.png"
+            (cd "dist/models/${slug}" && sha256sum --check SHA256.txt)
+          done
+          test -s dist/models/mpfb-catalog-summary.json
           grep -Fq '<title>Shibari Studio · 3D 绳艺教学</title>' dist/index.html
           grep -Eq 'src="/shibari_gpt/assets/.+\.js"' dist/index.html
           grep -Eq 'href="/shibari_gpt/assets/.+\.css"' dist/index.html
@@ -146,6 +152,18 @@ jobs:
           test -s RiggedFigure.glb
           sha256sum --check SHA256.txt
 
+          for slug in mpfb-casual-mobile mpfb-casual-original mpfb-sports-original; do
+            curl --fail --silent --show-error --location --max-time 180 \
+              "${PAGE_URL}models/${slug}/model.glb" --output "${slug}.glb"
+            curl --fail --silent --show-error --location --max-time 30 \
+              "${PAGE_URL}models/${slug}/SHA256.txt" --output "${slug}.sha256"
+            sed -E "s#  model\.glb#  ${slug}.glb#" "${slug}.sha256" > "${slug}.check"
+            sha256sum --check "${slug}.check"
+          done
+          curl --fail --silent --show-error --location --max-time 30 \
+            "${PAGE_URL}models/mpfb-catalog-summary.json" --output mpfb-catalog-summary.json
+          test "$(node -p "require('./mpfb-catalog-summary.json').length")" = "3"
+
           echo "Public deployment accepted: ${PAGE_URL} (${SOURCE_SHA})"
       - name: Report deployment to Draft PR
         if: always()
@@ -169,7 +187,7 @@ jobs:
               `- Run: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               '',
               success
-                ? 'Acceptance checked the exact deployment fingerprint, homepage, 404 document, JavaScript, CSS, QA GLB, and the GLB SHA-256 checksum.'
+                ? 'Acceptance checked the exact deployment fingerprint, homepage, 404 document, JavaScript, CSS, QA GLB, all three MPFB candidates, the catalog summary, and every GLB SHA-256 checksum.'
                 : 'The deployment was not accepted as current; inspect this run before treating the public site as updated.',
             ].join('\n');
 
