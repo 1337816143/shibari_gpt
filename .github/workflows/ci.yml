@@ -44,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       requested: ${{ steps.commit.outputs.requested }}
+      source_requested: ${{ steps.commit.outputs.source_requested }}
       head_sha: ${{ steps.commit.outputs.head_sha }}
     env:
       HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
@@ -53,7 +54,7 @@ jobs:
         with:
           ref: ${{ env.HEAD_SHA }}
           fetch-depth: 1
-      - name: Inspect candidate trigger marker
+      - name: Inspect trigger markers
         id: commit
         shell: bash
         run: |
@@ -68,6 +69,41 @@ jobs:
             echo "requested=false" >> "$GITHUB_OUTPUT"
             echo "No MPFB marker; heavy generation remains skipped."
           fi
+          if grep -Fq '[source-export]' <<< "$message"; then
+            echo "source_requested=true" >> "$GITHUB_OUTPUT"
+            echo "Source snapshot requested for $head_sha"
+          else
+            echo "source_requested=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  source_snapshot:
+    name: Export source snapshot
+    needs: [validate, candidate_gate]
+    if: needs.validate.result == 'success' && needs.candidate_gate.outputs.source_requested == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact validated source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.candidate_gate.outputs.head_sha }}
+      - name: Create source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=dist \
+            --exclude=test-results \
+            --exclude=playwright-report \
+            -czf "$RUNNER_TEMP/shibari-source.tar.gz" .
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: shibari-source-${{ github.run_id }}
+          path: ${{ runner.temp }}/shibari-source.tar.gz
+          retention-days: 1
+          compression-level: 0
 
   mpfb_candidate:
     name: Generate MPFB technical candidate
